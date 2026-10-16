@@ -25,9 +25,9 @@ LANGUAGES = {
     "Nepali": "Namaste"
 }
 
-# FIRST REPLY - NAAM NAHI, SIRF WELCOME
+# FIX 1 - FIRST REPLY = Welcome to our AI from Meghalaya
 if "messages" not in st.session_state:
-    st.session_state.messages=[{"role":"assistant","content":"Mitela! Main Northeast AI hu, Meghalaya ka pehla 10-language voice AI! Apni bhasa chuno aur bolo, main Roman English me clear jawab dunga. 🏔️"}]
+    st.session_state.messages=[{"role":"assistant","content":"Welcome to our AI from Meghalaya! 🏔️ Main Northeast ka pehla 10-language voice AI hu. Apni bhasa chuno aur bolo, main Roman English me clear jawab dunga."}]
 
 st.title("🏔️ Northeast AI")
 st.markdown("""
@@ -42,7 +42,8 @@ with col1:
     lang = st.selectbox("🌐 Language Chuno:", list(LANGUAGES.keys()), index=0)
 with col2:
     if st.button("🗑️ Clear"):
-        st.session_state.messages=[{"role":"assistant","content":f"{LANGUAGES[lang]}! Bolo, kya help chahiye?"}]
+        # FIX 2 - Clear par bhi Welcome from Meghalaya
+        st.session_state.messages=[{"role":"assistant","content":"Welcome to our AI from Meghalaya! 🏔️ Bolo, kya help chahiye?"}]
         st.rerun()
 
 def get_api_key():
@@ -51,7 +52,6 @@ def get_api_key():
 
 def get_reply(text, language):
     low=text.lower()
-    # Tere wale sawal ke liye - "tum ko kaun bana ia" bhi pakdega
     creator_keywords = ["who made you","kisne banaya","tumhe kisne","creator","banaya kisne","who created","kaun bana","kon banaya","kisne bnaya","tumko kaun","tujhe kisne","tumhe kaun","tum ko kaun","bana ia","kaun banaya"]
     if any(k in low for k in creator_keywords):
         return f"Mujhe banaya hai {CREATOR_NAME} ne, {CREATOR_PLACE} se! 🏔️"
@@ -60,12 +60,17 @@ def get_reply(text, language):
     if GROQ_AVAILABLE and api_key:
         try:
             client=Groq(api_key=api_key)
-            # NAME SIRF POOCHNE PAR, WARNA NAHI
-            prompt = f"You are Northeast AI. Your creator is {CREATOR_NAME} from {CREATOR_PLACE}, but DO NOT mention creator name unless user asks who made you. Never say OpenAI. Write ONLY in Roman English (A-Z letters), no native script. User language={language}, reply in {language} but in Roman script. User: {text}"
+            # FIX 3 - GARO LOOP + NO NAME UNLESS ASKED
+            if language in ["Garo", "Khasi", "Mizo", "Kokborok", "Nagamese"]:
+                prompt = f"You are Northeast AI from Meghalaya. User language {language}. Reply in SIMPLE clear Roman English A-Z only, no repeat, max 4 lines. Do not mention creator. User: {text}"
+            else:
+                prompt = f"You are Northeast AI from Meghalaya. Do NOT mention creator {CREATOR_NAME} unless user asks who made you. Never say OpenAI. ONLY Roman English A-Z letters. Language={language}. User: {text}"
+
             comp=client.chat.completions.create(
-                messages=[{"role":"system","content":prompt}],
+                messages=[{"role":"system","content":"You are Northeast AI from Meghalaya. Reply only in Roman English, no loops, no OpenAI."},{"role":"user","content":prompt}],
                 model="openai/gpt-oss-20b",
-                max_tokens=1000,
+                max_tokens=800,
+                temperature=0.6,
                 extra_body={"reasoning_effort": "low"}
             )
             content = comp.choices[0].message.content
@@ -77,7 +82,7 @@ def get_reply(text, language):
                 raise Exception("Empty")
         except Exception as e:
             try:
-                prompt2 = f"You are Northeast AI. Do not mention creator unless asked. Reply in {language} but ONLY Roman English A-Z. User: {text}"
+                prompt2 = f"Reply in {language} but ONLY Roman English A-Z, no repeat, no creator mention. User: {text}"
                 comp=client.chat.completions.create(
                     messages=[{"role":"user","content":prompt2}],
                     model="qwen/qwen3-32b",
@@ -101,10 +106,8 @@ def transcribe_voice(audio_file):
             return None
     return None
 
-# VOICE CLEAR FUNCTION - YEH MAIN FIX HAI
 def speak_clear(text):
     try:
-        # co.in se clear Indian voice, slow=False se clear fast
         tts=gTTS(text=text[:400], lang='en', tld='co.in', slow=False)
         fp=io.BytesIO()
         tts.write_to_fp(fp)
