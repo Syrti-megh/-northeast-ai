@@ -43,12 +43,19 @@ with col2:
         st.session_state.messages=[]
         st.rerun()
 
+def get_api_key():
+    # Secrets se try, nahi mila to direct key
+    k = st.secrets.get("GROQ_API_KEY","") if hasattr(st, 'secrets') else ""
+    if not k:
+        k = "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"
+    return k.strip()
+
 def get_reply(text, language):
     low=text.lower()
     if any(k in low for k in ["who made you","kisne banaya","tumhe kisne","creator","banaya kisne","who created"]):
         return f"Mujhe banaya hai {CREATOR_NAME} ne, {CREATOR_PLACE} se! 🏔️"
 
-    api_key=st.secrets.get("GROQ_API_KEY","")
+    api_key=get_api_key()
     if GROQ_AVAILABLE and api_key:
         try:
             client=Groq(api_key=api_key)
@@ -56,12 +63,12 @@ def get_reply(text, language):
                 messages=[{"role":"user","content":f"You are Northeast AI, creator {CREATOR_NAME} from {CREATOR_PLACE}. Reply in {language}. User: {text}"}],
                 model="llama-3.1-8b-instant", max_tokens=300)
             return comp.choices[0].message.content
-        except:
-            pass
+        except Exception as e:
+            return f"Groq Error: {e}"
     return f"{LANGUAGES[language]}! You said: {text} in {language}."
 
 def transcribe_voice(audio_file):
-    api_key=st.secrets.get("GROQ_API_KEY","")
+    api_key=get_api_key()
     if GROQ_AVAILABLE and api_key and audio_file:
         try:
             client=Groq(api_key=api_key)
