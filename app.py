@@ -7,79 +7,123 @@ try:
 except:
     GROQ_AVAILABLE=False
 
-st.set_page_config(page_title="Northeast AI", page_icon="🏔️", layout="centered")
+st.set_page_config(page_title="Northeast AI - Meghalaya", page_icon="🏔️", layout="centered")
 
 CREATOR_NAME="Samewan"
 CREATOR_PLACE="Meghalaya"
 
-LANGUAGES=["Garo","Khasi","Mizo","Kokborok","Assamese","Bengali","Hindi","English","Nagamese"]
+LANGUAGES = {
+    "Garo": "Mitela",
+    "Khasi": "Khublei",
+    "Mizo": "Chibai",
+    "Kokborok": "Hamjakma",
+    "Assamese": "Nomoskar",
+    "Bengali": "Nomoskar",
+    "Hindi": "Namaste",
+    "English": "Hello",
+    "Nagamese": "Hello"
+}
 
 if "messages" not in st.session_state:
     st.session_state.messages=[]
 
+# --- BEAUTIFUL HEADER ---
 st.title("🏔️ Northeast AI")
-st.caption("9 Bhasa Voice ChatGPT")
+st.markdown("""
+**🌟 Meghalaya's First 9-Language Voice AI | Northeast India**
 
-with st.sidebar:
-    lang=st.selectbox("Bhasa:", LANGUAGES)
-    if st.button("🗑️ Clear Chat"):
+🎙️ **Bolke puchho, sunke samjho** - Apni bhasa me baat karo!
+
+💬 Garo | Khasi | Mizo | Kokborok | Assamese | Bengali | Hindi | English | Nagamese
+""")
+st.info("👇 Bhasa chuno, phir Type karo ya 🎤 Mic se Bolo!")
+
+# --- LANGUAGE CHOOSE ---
+col1, col2 = st.columns([2,1])
+with col1:
+    lang = st.selectbox("🌐 Language Chuno / Choose Language:", list(LANGUAGES.keys()), index=0)
+with col2:
+    if st.button("🗑️ Clear"):
         st.session_state.messages=[]
         st.rerun()
 
-def get_reply(text):
+# --- BRAIN ---
+def get_reply(text, language):
     low=text.lower()
     if any(k in low for k in ["who made you","kisne banaya","tumhe kisne","creator","banaya kisne","who created"]):
-        return f"Mujhe banaya hai {CREATOR_NAME} ne, {CREATOR_PLACE} se! 🏔️"
+        return f"Mujhe banaya hai **{CREATOR_NAME}** ne, **{CREATOR_PLACE}** se! 🏔️ Northeast ka pehla 9-Language Voice AI!"
 
     api_key=st.secrets.get("GROQ_API_KEY","")
     if GROQ_AVAILABLE and api_key:
         try:
             client=Groq(api_key=api_key)
             comp=client.chat.completions.create(
-                messages=[{"role":"user","content":f"You are Northeast AI, creator is {CREATOR_NAME} from {CREATOR_PLACE}. Reply in {lang}. User: {text}"}],
-                model="llama-3.1-8b-instant", max_tokens=250)
+                messages=[{"role":"user","content":f"You are Northeast AI from Meghalaya, friendly, reply in {language}. Creator is {CREATOR_NAME} from {CREATOR_PLACE}. User: {text}"}],
+                model="llama-3.1-8b-instant", max_tokens=300)
             return comp.choices[0].message.content
         except:
             pass
-    return f"Mitela! You said: {text} - in {lang}. How can I help?"
+    return f"{LANGUAGES[language]}! You said: {text} in {language}. I can help in 9 Northeast languages!"
 
-# Chat history
+def transcribe_voice(audio_file):
+    api_key=st.secrets.get("GROQ_API_KEY","")
+    if GROQ_AVAILABLE and api_key and audio_file:
+        try:
+            client=Groq(api_key=api_key)
+            transcription=client.audio.transcriptions.create(
+                file=("voice.wav", audio_file.getvalue()),
+                model="whisper-large-v3",
+                language="en"
+            )
+            return transcription.text
+        except:
+            return None
+    return None
+
+# --- SHOW CHATS ---
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
         if msg["role"]=="assistant":
             try:
-                tts=gTTS(text=msg["content"][:300], lang='en')
+                tts=gTTS(text=msg["content"][:350], lang='en')
                 fp=io.BytesIO(); tts.write_to_fp(fp)
                 st.audio(fp.getvalue(), format="audio/mp3")
             except: pass
 
-# --- VOICE INPUT + TEXT INPUT ---
+# --- INPUT AREA: TEXT + VOICE ---
 st.divider()
-col1, col2 = st.columns([3,1])
-with col1:
-    text_input = st.chat_input(f"Type in {lang}...")
-with col2:
-    voice = st.audio_input("🎤 Bolo")
+st.markdown(f"**{LANGUAGES[lang]}! Type karo ya Mic dabao 🎤**")
+
+# Voice input
+voice_input = st.audio_input(f"🎤 {lang} me Bolo - Voice bhejo")
 
 user_text = None
+
+if voice_input:
+    with st.spinner("Sun raha hu..."):
+        transcribed = transcribe_voice(voice_input)
+        if transcribed:
+            user_text = transcribed
+            st.success(f"🎤 Suna: {transcribed}")
+        else:
+            user_text = f"Voice message in {lang}"
+            st.info("Voice mil gaya! (Groq key lagao to text me convert hoga)")
+
+# Text input
+text_input = st.chat_input(f"{LANGUAGES[lang]}! Yahan likho / Type in {lang}...")
+
 if text_input:
     user_text = text_input
-elif voice:
-    user_text = "Hello (voice message)" # Speech-to-text ke liye Whisper chahiye, abhi text samjho
-    st.success("Voice received! Text reply de raha hu")
 
 if user_text:
     st.session_state.messages.append({"role":"user","content":user_text})
     with st.chat_message("user"): st.write(user_text)
 
-    reply=get_reply(user_text)
+    reply=get_reply(user_text, lang)
     st.session_state.messages.append({"role":"assistant","content":reply})
     with st.chat_message("assistant"):
         st.write(reply)
         try:
-            tts=gTTS(text=reply[:300], lang='en')
-            fp=io.BytesIO(); tts.write_to_fp(fp)
-            st.audio(fp.getvalue(), format="audio/mp3", autoplay=True)
-        except: pass
-    st.rerun()
+            tts=gTTS(text=reply[:350], lang='en')
+            fp=io.BytesIO(); tts.write
