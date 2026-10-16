@@ -48,11 +48,10 @@ def get_api_key():
 
 def get_reply(text, language):
     low = text.lower().strip()
-    # Auto-detect
     is_mizo = any(w in low for w in ["ngaihtuah","i dam em","chibai","ka lawm","muttui","thiam em","chanchin","hla","khawiah","nge lar"])
-    is_hindi = any(w in low for w in ["kabre","batao","kaun hai","kya hai","bare me"])
+    is_hindi = any(w in low for w in ["kabre","batao","kaun hai","kya hai","bare me","mujhe","kaise","banana","banao"])
 
-    # === 1. KNOWLEDGE BASE - SHILLONG (MUST BE FIRST) ===
+    # === 1. SHILLONG - TOP PRIORITY ===
     if "shillong" in low:
         if language == "Hindi" or is_hindi or "kabre" in low or "batao" in low:
             return "Namaste! Shillong Meghalaya ki capital hai! Ise Scotland of the East kehte hain! Umiam Lake, Elephant Falls, Police Bazar, Laitlum Canyon yahan famous hai! Bahut khoobsurat hill station! 🏔️"
@@ -62,7 +61,11 @@ def get_reply(text, language):
     if "aizawl" in low:
         return "Chibai! Aizawl chu Mizoram capital a ni! Tlang chungah a awm! Mizo culture lar! 🏔️"
 
-    # === 2. QUICK DICTIONARY ===
+    # === 2. AI KAISE BANAYE - TERA SCREENSHOT WALA FIX ===
+    if any(k in low for k in ["kaise ai bana","ai kaise ban","mujhe ai bana","ai banana hai","how to make ai","mujhe kaise ai","ai kaise banta","ai banane ke liye","mujhe bhi ai bana"]):
+        return f"Namaste! AI banana hai? {CREATOR_NAME} ne {CREATOR_PLACE} se aise banaya: 1) Python + Streamlit sikho 2) groq.com se FREE Groq API Key lo 3) app.py me Groq code jodo - from groq import Groq 4) gTTS se voice jodo 5) Streamlit Cloud pe deploy! Tum bhi bana sakte ho! Main tumhe code sikha sakta hu! 💻🏔️"
+
+    # === 3. QUICK DICTIONARY ===
     quick = {
         "muttui mangtha": "Muttui! Mangtha le! Naktukah kan in hmu leh dawn nia! 😴",
         "mizoram hi eng nge lar": "Chibai! Mizoram is famous for Aizawl city, blue mountains, Chapchar Kut, Cheraw dance, peaceful churches! 🏔️",
@@ -84,14 +87,8 @@ def get_reply(text, language):
     if "khublei" in low: return "Khublei! Kumno long? Nga bha! 😊🏔️"
     if "hamjakma" in low: return "Hamjakma! Nung tamo? Ang hamjak! 😊🏔️"
 
-    # === 3. CREATOR - 100% FIXED FOR OWNER QUESTION ===
-    creator_keywords = [
-        "who made you","kisne banaya","who created you","creator kaun",
-        "tuin siam che","i hming eng nge","who is your creator",
-        "owner kaun","tera owner","ter owner","malik kaun","owner kaun hai",
-        "kisne banaya tumhe","tumhe kisne banaya","who is your owner",
-        "tumhara malik kaun","tumhara owner"
-    ]
+    # === 4. CREATOR ===
+    creator_keywords = ["who made you","kisne banaya","who created you","creator kaun","tuin siam che","i hming eng nge","owner kaun","tera owner","ter owner","malik kaun","owner kaun hai","tumhe kisne banaya","who is your owner"]
     if any(k in low for k in creator_keywords):
         if is_mizo or language == "Mizo":
             return f"Chibai! Kei Northeast AI ka ni! Min siamtu chu {CREATOR_NAME} a ni, {CREATOR_PLACE} atangin! 🏔️"
@@ -99,31 +96,35 @@ def get_reply(text, language):
             return f"Namaste! Main Northeast AI hu! Mujhe {CREATOR_NAME} ne {CREATOR_PLACE} se banaya hai! 🏔️"
         return f"Hello! I am Northeast AI! Created by {CREATOR_NAME} from {CREATOR_PLACE}! 🏔️"
 
-    # === 4. GROQ API ===
+    # === 5. GROQ - HAR SAWAL KA JAWAB ===
     api_key = get_api_key()
     if GROQ_AVAILABLE and api_key:
         try:
             client = Groq(api_key=api_key)
-            target_lang = "Mizo" if is_mizo else ("Hindi" if is_hindi else language)
-            comp = client.chat.completions.create(
-                messages=[
-                    {"role":"system","content": f"You are Northeast AI made by {CREATOR_NAME} from {CREATOR_PLACE}. You MUST reply in {target_lang} only, Roman letters. Max 3 lines. If asked about Shillong, tell about capital, Scotland of East, Umiam Lake."},
-                    {"role":"user","content": f"Reply in {target_lang}: {text}"}
-                ],
-                model="qwen/qwen3-32b", max_tokens=500, temperature=0.6
-            )
-            content = comp.choices[0].message.content
-            if content and content.strip():
-                return content.replace("OpenAI", CREATOR_NAME)
+            for model_name in ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "qwen/qwen3-32b"]:
+                try:
+                    target_lang = "Mizo" if is_mizo else ("Hindi" if is_hindi else language)
+                    comp = client.chat.completions.create(
+                        messages=[
+                            {"role":"system","content": f"You are Northeast AI by {CREATOR_NAME} from {CREATOR_PLACE}. Reply in {target_lang} only, Roman letters. Max 4 lines. You know everything about Shillong, Meghalaya, Mizoram, Northeast. If asked how to make AI, explain Python+Streamlit+Groq+gTTS steps."},
+                            {"role":"user","content": f"Reply in {target_lang}: {text}"}
+                        ],
+                        model=model_name, max_tokens=700, temperature=0.7
+                    )
+                    content = comp.choices[0].message.content
+                    if content and content.strip():
+                        return content.replace("OpenAI", CREATOR_NAME).replace("Meta AI", "Northeast AI")
+                except:
+                    continue
         except:
             pass
 
-    # === 5. SMART FALLBACK ===
+    # === 6. SMART FALLBACK - AB GENERIC NAHI ===
     if is_mizo:
         return "Chibai! Ka ngaihtuah chu nangmah! Eng nge ka pui theih che? I tan ka awm e! 😊🏔️"
-    if language == "Hindi" or is_hindi:
-        return f"Namaste! '{text}' ke baare me - Northeast bahut khoobsurat hai! Shillong, Meghalaya ke baare me pucho! 🏔️"
-    return f"Hello! About '{text}' - Northeast is beautiful! Ask me about Shillong, Meghalaya, Mizoram! 🏔️"
+    if is_hindi or language=="Hindi":
+        return f"Namaste! '{text}' ke baare me - Main har sawal ka jawab deta hu! Shillong, Meghalaya, Mizoram, ya AI kaise banaye - kuch bhi pucho! Groq API key check karo agar jawab nahi aa raha! 🏔️"
+    return f"Hello! About '{text}' - I answer everything! Ask about Shillong, Meghalaya, Mizoram, or how to make AI like me! Check Groq API key if no detailed answer! 🏔️"
 
 def transcribe_voice(audio_file):
     api_key=get_api_key()
