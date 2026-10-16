@@ -10,7 +10,6 @@ except:
 
 st.set_page_config(page_title="Northeast AI - Meghalaya", page_icon="🏔️", layout="centered")
 
-# FINAL CSS - scroll fix + border + code wrap
 st.markdown("""
 <style>
 div[data-testid="stCodeBlock"] {
@@ -63,18 +62,14 @@ def get_api_key():
 
 def is_looping(text):
     t = text.lower()
-    # Mizo + Garo + Khasi loops - UPDATED
     bad_phrases = ["hriatna", "thlawnna", "chhuak a", "phur chhuak", "jingbeng", "ka shaba", "beng beng", "a beng", "gipa", "jingpynshang", "jingpyrkhat", "jingmut", "ka jing"]
     for phrase in bad_phrases:
-        if t.count(phrase) >= 3: # 3 baar se zyada aaya to loop
+        if t.count(phrase) >= 3:
             return True
-
-    # same word 3 baar lagatar
     words = t.split()
     for i in range(len(words)-2):
         if words[i]==words[i+1]==words[i+2]:
             return True
-        # Khasi special: "ka" har doosre word me
         if i < len(words)-4 and words[i]=="ka" and words[i+2]=="ka" and words[i+4]=="ka":
             if words[i+1]==words[i+3]:
                 return True
@@ -85,11 +80,11 @@ def get_reply(text, language):
     if GROQ_AVAILABLE and api_key.startswith("gsk_") and len(api_key) > 20:
         try:
             client = Groq(api_key=api_key)
-            # FINAL PROMPT - Khasi fix added
-            system_prompt = f"You are Northeast AI by Samewan from Meghalaya. User language: {language}. CRITICAL RULES: 1) Answer in {language} only. 2) NEVER repeat any word more than twice. 3) BANNED PHRASES: 'a beng beng', 'jingpynshang', 'jingpyrkhat', 'hriatna'. If you use them once, STOP. 4) Max 2 short sentences, simple words. 5) For Python code: Give CLEAN multiline code in ```python block. Use short vars Num1, Num2, Op, result. Format: Num1 = float(input('Num1: ')) NEWLINE Num2 = float(input('Num2: ')) NEWLINE if Op == '+': result = Num1 + Num2 etc. Always end with print(result). No one-line ternary."
+            system_prompt = f"You are Northeast AI by Samewan from Meghalaya. User language: {language}. CRITICAL RULES: 1) Answer in {language} only. 2) NEVER repeat any word more than twice. 3) BANNED PHRASES: 'a beng beng', 'jingpynshang', 'jingpyrkhat', 'hriatna'. 4) Max 2 short sentences, simple words. 5) For Python code: Give CLEAN multiline code in ```python block. Use short vars Num1, Num2, Op, result. Format: Num1 = float(input('Num1: ')) NEWLINE Num2 = float(input('Num2: ')) etc. Always end with print(result)."
 
             last_err = "No model worked"
-            for model_name in ["llama-3.1-8b-instant", "meta-llama/llama-4-scout-17b-16e-instruct", "openai/gpt-oss-20b"]:
+            # FIXED MODEL LIST - 404 error khatam
+            for model_name in ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "llama-3.1-70b-versatile"]:
                 try:
                     comp = client.chat.completions.create(
                         messages=[
@@ -98,7 +93,7 @@ def get_reply(text, language):
                         ],
                         model=model_name,
                         max_tokens=800,
-                        temperature=0.1, # 0.2 se 0.1 - loop kam hoga
+                        temperature=0.1,
                         top_p=0.8,
                         frequency_penalty=2.0,
                         presence_penalty=1.5
@@ -112,7 +107,7 @@ def get_reply(text, language):
                 except Exception as e:
                     last_err = str(e)
                     continue
-            return "Groq Error: " + last_err[:300]
+            return "Groq Error: " + last_err[:400]
         except Exception as e:
             return "Connect Error: " + str(e)[:300]
     return "API Key missing len " + str(len(api_key))
@@ -153,9 +148,8 @@ def render_message(content):
         codes = re.findall(r"```(?:python)?(.*?)```", content, re.DOTALL)
         for c in codes:
             code_clean = c.strip()
-            # Fix truncated last line like "result" alone
-            if code_clean.endswith("\n result") or code_clean.endswith("\n result"):
-                code_clean += " = 'Invalid'"
+            if code_clean.endswith("\n result") or code_clean.endswith("\nresult"):
+                code_clean += " = 'Invalid operator'"
             st.code(code_clean, language="python")
     else:
         st.write(content)
