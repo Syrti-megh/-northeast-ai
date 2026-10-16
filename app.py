@@ -25,7 +25,6 @@ LANGUAGES = {
     "Nepali": "Namaste"
 }
 
-# FIX 1 - FIRST REPLY = Welcome to our AI from Meghalaya
 if "messages" not in st.session_state:
     st.session_state.messages=[{"role":"assistant","content":"Welcome to our AI from Meghalaya! 🏔️ Main Northeast ka pehla 10-language voice AI hu. Apni bhasa chuno aur bolo, main Roman English me clear jawab dunga."}]
 
@@ -42,7 +41,6 @@ with col1:
     lang = st.selectbox("🌐 Language Chuno:", list(LANGUAGES.keys()), index=0)
 with col2:
     if st.button("🗑️ Clear"):
-        # FIX 2 - Clear par bhi Welcome from Meghalaya
         st.session_state.messages=[{"role":"assistant","content":"Welcome to our AI from Meghalaya! 🏔️ Bolo, kya help chahiye?"}]
         st.rerun()
 
@@ -52,22 +50,26 @@ def get_api_key():
 
 def get_reply(text, language):
     low=text.lower()
-    creator_keywords = ["who made you","kisne banaya","tumhe kisne","creator","banaya kisne","who created","kaun bana","kon banaya","kisne bnaya","tumko kaun","tujhe kisne","tumhe kaun","tum ko kaun","bana ia","kaun banaya"]
+    # FIXED: Garo ka biming wala sawal add kiya
+    creator_keywords = ["who made you","kisne banaya","tumhe kisne","creator","banaya kisne","who created","kaun bana","kon banaya","kisne bnaya","tumko kaun","tujhe kisne","tumhe kaun","tum ko kaun","bana ia","kaun banaya","nangni biming","nang biming","biming ra","bimung ra","bimung","your name","tera naam","tumhara naam","na chusokna","na·a chusokna","ming ra","biming"]
     if any(k in low for k in creator_keywords):
+        if language == "Garo":
+            return f"Mitela! Anga Northeast AI! Angko {CREATOR_NAME} ne {CREATOR_PLACE} ni a·song se chon·a! 🏔️"
         return f"Mujhe banaya hai {CREATOR_NAME} ne, {CREATOR_PLACE} se! 🏔️"
 
     api_key=get_api_key()
     if GROQ_AVAILABLE and api_key:
         try:
             client=Groq(api_key=api_key)
-            # FIX 3 - GARO LOOP + NO NAME UNLESS ASKED
-            if language in ["Garo", "Khasi", "Mizo", "Kokborok", "Nagamese"]:
-                prompt = f"You are Northeast AI from Meghalaya. User language {language}. Reply in SIMPLE clear Roman English A-Z only, no repeat, max 4 lines. Do not mention creator. User: {text}"
+            if language == "Garo":
+                prompt = f"You are Northeast AI from Meghalaya, made by {CREATOR_NAME}. User speaks Garo. User said: {text}. Reply in simple Roman Garo + English mix like 'Mitela! Anga...' Do not say OpenAI. No looping. Only A-Z letters. Max 4 lines."
+            elif language in ["Khasi", "Mizo", "Kokborok", "Nagamese"]:
+                prompt = f"You are Northeast AI from Meghalaya, made by {CREATOR_NAME}. User lang {language}. Reply in simple {language} Roman + English, max 3 lines, no loop, no OpenAI. User: {text}"
             else:
-                prompt = f"You are Northeast AI from Meghalaya. Do NOT mention creator {CREATOR_NAME} unless user asks who made you. Never say OpenAI. ONLY Roman English A-Z letters. Language={language}. User: {text}"
+                prompt = f"You are Northeast AI from Meghalaya. Do NOT mention creator {CREATOR_NAME} unless asked. Never say OpenAI. ONLY Roman English A-Z. Language={language}. User: {text}"
 
             comp=client.chat.completions.create(
-                messages=[{"role":"system","content":"You are Northeast AI from Meghalaya. Reply only in Roman English, no loops, no OpenAI."},{"role":"user","content":prompt}],
+                messages=[{"role":"system","content":"You are Northeast AI from Meghalaya. Reply only in Roman letters, no loops, no OpenAI."},{"role":"user","content":prompt}],
                 model="openai/gpt-oss-20b",
                 max_tokens=800,
                 temperature=0.6,
@@ -89,6 +91,8 @@ def get_reply(text, language):
                     max_tokens=500)
                 return comp.choices[0].message.content or f"{LANGUAGES[language]}! Hii"
             except Exception as e2:
+                if language == "Garo":
+                    return f"Mitela! Anga Northeast AI! Maikai help nangna?"
                 return f"{LANGUAGES[language]}! Bolo kya puchna hai?"
     return f"{LANGUAGES[language]}! You said: {text} in {language}."
 
