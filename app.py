@@ -44,7 +44,6 @@ with col2:
         st.rerun()
 
 def get_api_key():
-    # Sirf Secrets se lega - safe hai
     k = st.secrets.get("GROQ_API_KEY","") if hasattr(st, 'secrets') else ""
     return k.strip()
 
@@ -57,12 +56,20 @@ def get_reply(text, language):
     if GROQ_AVAILABLE and api_key:
         try:
             client=Groq(api_key=api_key)
+            # NAYA WORKING MODEL - 2026
             comp=client.chat.completions.create(
                 messages=[{"role":"user","content":f"You are Northeast AI, creator {CREATOR_NAME} from {CREATOR_PLACE}. Reply in {language}. User: {text}"}],
-                model="llama-3.3-70b-versatile", max_tokens=300)
+                model="openai/gpt-oss-20b", max_tokens=300)
             return comp.choices[0].message.content
         except Exception as e:
-            return f"Groq Error: {e}"
+            # Agar ye bhi fail to dusra try karo
+            try:
+                comp=client.chat.completions.create(
+                    messages=[{"role":"user","content":f"You are Northeast AI, creator {CREATOR_NAME} from {CREATOR_PLACE}. Reply in {language}. User: {text}"}],
+                    model="llama-3.1-8b-instant", max_tokens=300)
+                return comp.choices[0].message.content
+            except Exception as e2:
+                return f"Groq Error: {e2}"
     return f"{LANGUAGES[language]}! You said: {text} in {language}."
 
 def transcribe_voice(audio_file):
