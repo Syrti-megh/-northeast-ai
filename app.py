@@ -50,7 +50,13 @@ def get_api_key():
 
 def is_looping(text):
     t = text.lower()
+    if t.count("hriatna") > 3:
+        return True
+    if t.count("thlawnna") > 3:
+        return True
     if t.count("chhuak a") > 3:
+        return True
+    if t.count("phur chhuak") > 2:
         return True
     if t.count("jingbeng") > 3:
         return True
@@ -63,8 +69,9 @@ def get_reply(text, language):
     if GROQ_AVAILABLE and api_key.startswith("gsk_") and len(api_key) > 20:
         try:
             client = Groq(api_key=api_key)
-            system_prompt = "You are Northeast AI by Samewan from Meghalaya. User language is " + language + ". Reply in simple Roman. If " + language + " is Mizo, Khasi, Garo, Kokborok and you are not fluent, reply in simple Hindi + English mix but never repeat same phrase like a chhuak a or jingbeng. Max 6 lines."
-            for model_name in ["llama-3.1-8b-instant", "openai/gpt-oss-20b", "openai/gpt-oss-120b", "meta-llama/llama-4-scout-17b-16e-instruct"]:
+            system_prompt = "You are Northeast AI by Samewan from Meghalaya. User language is " + language + ". Reply in simple Roman. If " + language + " is Mizo, Khasi, Garo, Kokborok and you are not fluent, reply in simple Hindi + English mix but never repeat same phrase like a chhuak a or jingbeng or hriatna. Max 6 lines."
+            # FIXED ORDER: Scout first for Mizo/Khasi
+            for model_name in ["meta-llama/llama-4-scout-17b-16e-instruct", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.1-8b-instant"]:
                 try:
                     comp = client.chat.completions.create(
                         messages=[
