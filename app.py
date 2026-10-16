@@ -83,8 +83,7 @@ def get_reply(text, language):
             system_prompt = f"You are Northeast AI by Samewan from Meghalaya. User language: {language}. CRITICAL RULES: 1) Answer in {language} only. 2) NEVER repeat any word more than twice. 3) BANNED PHRASES: 'a beng beng', 'jingpynshang', 'jingpyrkhat', 'hriatna'. 4) Max 2 short sentences, simple words. 5) For Python code: Give CLEAN multiline code in ```python block. Use short vars Num1, Num2, Op, result. Format: Num1 = float(input('Num1: ')) NEWLINE Num2 = float(input('Num2: ')) etc. Always end with print(result)."
 
             last_err = "No model worked"
-            # FIXED 2026 MODELS - NO MORE DECOMMISSIONED ERROR
-            for model_name in ["llama-3.1-8b-instant", "openai/gpt-oss-20b", "openai/gpt-oss-120b"]:
+            for model_name in ["openai/gpt-oss-20b", "openai/gpt-oss-120b"]:
                 try:
                     comp = client.chat.completions.create(
                         messages=[
@@ -92,16 +91,12 @@ def get_reply(text, language):
                             {"role": "user", "content": text}
                         ],
                         model=model_name,
-                        max_tokens=800,
-                        temperature=0.1,
-                        top_p=0.8,
-                        frequency_penalty=2.0,
-                        presence_penalty=1.5
+                        max_tokens=2000,
+                        temperature=0.2
                     )
                     content = comp.choices[0].message.content
                     if content and content.strip():
                         if is_looping(content):
-                            print(f"Loop detected in {model_name}, retrying...")
                             continue
                         return content
                 except Exception as e:
