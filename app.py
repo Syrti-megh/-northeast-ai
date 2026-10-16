@@ -48,20 +48,21 @@ def get_api_key():
 
 def get_reply(text, language):
     low = text.lower().strip()
-    # Auto-detect Mizo
-    is_mizo = any(w in low for w in ["ngaihtuah","i dam em","chibai","ka lawm","muttui","thiam em","chanchin","hla"])
+    # Auto-detect
+    is_mizo = any(w in low for w in ["ngaihtuah","i dam em","chibai","ka lawm","muttui","thiam em","chanchin","hla","khawiah","nge lar"])
+    is_hindi = any(w in low for w in ["kabre","batao","kaun hai","kya hai","bare me"])
 
-    # === 1. KNOWLEDGE BASE - SHILLONG FIX ===
+    # === 1. KNOWLEDGE BASE - SHILLONG (MUST BE FIRST) ===
     if "shillong" in low:
-        if language == "Hindi" or "kabre" in low or "batao" in low:
+        if language == "Hindi" or is_hindi or "kabre" in low or "batao" in low:
             return "Namaste! Shillong Meghalaya ki capital hai! Ise Scotland of the East kehte hain! Umiam Lake, Elephant Falls, Police Bazar, Laitlum Canyon yahan famous hai! Bahut khoobsurat hill station! 🏔️"
         return "Hello! Shillong is the capital of Meghalaya! Called Scotland of the East! Famous for Umiam Lake, Elephant Falls, Police Bazar, Laitlum Canyon! Beautiful hill station! 🏔️"
     if "cherrapunji" in low or "sohra" in low:
         return "Hello! Cherrapunji (Sohra) is famous for heavy rainfall! Living root bridges and Nohkalikai Falls are here! In Meghalaya! 🏔️"
     if "aizawl" in low:
-        return "Chibai! Aizawl chu Mizoram capital a ni! Tlang chungah a awm! 🏔️"
+        return "Chibai! Aizawl chu Mizoram capital a ni! Tlang chungah a awm! Mizo culture lar! 🏔️"
 
-    # === 2. QUICK DICTIONARY - FIXED (Language independent) ===
+    # === 2. QUICK DICTIONARY ===
     quick = {
         "muttui mangtha": "Muttui! Mangtha le! Naktukah kan in hmu leh dawn nia! 😴",
         "mizoram hi eng nge lar": "Chibai! Mizoram is famous for Aizawl city, blue mountains, Chapchar Kut, Cheraw dance, peaceful churches! 🏔️",
@@ -79,17 +80,22 @@ def get_reply(text, language):
         if key in low:
             return quick[key]
 
-    # Garo/Khasi quick
     if "mitela" in low: return "Mitela! Maikai? Anga tha! Nang? 😊🏔️"
     if "khublei" in low: return "Khublei! Kumno long? Nga bha! 😊🏔️"
     if "hamjakma" in low: return "Hamjakma! Nung tamo? Ang hamjak! 😊🏔️"
 
-    # === 3. CREATOR - Narrow check ===
-    creator_keywords = ["who made you","kisne banaya","who created you","creator kaun","tuin siam che","i hming eng nge"]
+    # === 3. CREATOR - 100% FIXED FOR OWNER QUESTION ===
+    creator_keywords = [
+        "who made you","kisne banaya","who created you","creator kaun",
+        "tuin siam che","i hming eng nge","who is your creator",
+        "owner kaun","tera owner","ter owner","malik kaun","owner kaun hai",
+        "kisne banaya tumhe","tumhe kisne banaya","who is your owner",
+        "tumhara malik kaun","tumhara owner"
+    ]
     if any(k in low for k in creator_keywords):
         if is_mizo or language == "Mizo":
             return f"Chibai! Kei Northeast AI ka ni! Min siamtu chu {CREATOR_NAME} a ni, {CREATOR_PLACE} atangin! 🏔️"
-        if language == "Hindi":
+        if language == "Hindi" or is_hindi:
             return f"Namaste! Main Northeast AI hu! Mujhe {CREATOR_NAME} ne {CREATOR_PLACE} se banaya hai! 🏔️"
         return f"Hello! I am Northeast AI! Created by {CREATOR_NAME} from {CREATOR_PLACE}! 🏔️"
 
@@ -98,10 +104,10 @@ def get_reply(text, language):
     if GROQ_AVAILABLE and api_key:
         try:
             client = Groq(api_key=api_key)
-            target_lang = "Mizo" if is_mizo else language
+            target_lang = "Mizo" if is_mizo else ("Hindi" if is_hindi else language)
             comp = client.chat.completions.create(
                 messages=[
-                    {"role":"system","content": f"You are Northeast AI made by {CREATOR_NAME} from {CREATOR_PLACE}. You MUST reply in {target_lang} only, Roman letters. Max 3 lines."},
+                    {"role":"system","content": f"You are Northeast AI made by {CREATOR_NAME} from {CREATOR_PLACE}. You MUST reply in {target_lang} only, Roman letters. Max 3 lines. If asked about Shillong, tell about capital, Scotland of East, Umiam Lake."},
                     {"role":"user","content": f"Reply in {target_lang}: {text}"}
                 ],
                 model="qwen/qwen3-32b", max_tokens=500, temperature=0.6
@@ -112,12 +118,10 @@ def get_reply(text, language):
         except:
             pass
 
-    # === 5. SMART FALLBACK - No creator spam ===
+    # === 5. SMART FALLBACK ===
     if is_mizo:
         return "Chibai! Ka ngaihtuah chu nangmah! Eng nge ka pui theih che? I tan ka awm e! 😊🏔️"
-    if "shillong" in low:
-        return "Hello! Shillong is capital of Meghalaya! Scotland of the East! Famous for Umiam Lake, Elephant Falls! 🏔️"
-    if language == "Hindi":
+    if language == "Hindi" or is_hindi:
         return f"Namaste! '{text}' ke baare me - Northeast bahut khoobsurat hai! Shillong, Meghalaya ke baare me pucho! 🏔️"
     return f"Hello! About '{text}' - Northeast is beautiful! Ask me about Shillong, Meghalaya, Mizoram! 🏔️"
 
