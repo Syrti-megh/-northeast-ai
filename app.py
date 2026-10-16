@@ -83,8 +83,8 @@ def get_reply(text, language):
             system_prompt = f"You are Northeast AI by Samewan from Meghalaya. User language: {language}. CRITICAL RULES: 1) Answer in {language} only. 2) NEVER repeat any word more than twice. 3) BANNED PHRASES: 'a beng beng', 'jingpynshang', 'jingpyrkhat', 'hriatna'. 4) Max 2 short sentences, simple words. 5) For Python code: Give CLEAN multiline code in ```python block. Use short vars Num1, Num2, Op, result. Format: Num1 = float(input('Num1: ')) NEWLINE Num2 = float(input('Num2: ')) etc. Always end with print(result)."
 
             last_err = "No model worked"
-            # FIXED MODEL LIST - 404 error khatam
-            for model_name in ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "llama-3.1-70b-versatile"]:
+            # FIXED 2026 MODELS - NO MORE DECOMMISSIONED ERROR
+            for model_name in ["llama-3.1-8b-instant", "openai/gpt-oss-20b", "openai/gpt-oss-120b"]:
                 try:
                     comp = client.chat.completions.create(
                         messages=[
