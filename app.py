@@ -1,6 +1,8 @@
 import streamlit as st
 from gtts import gTTS
 import io
+import os
+
 try:
     from groq import Groq
     GROQ_AVAILABLE = True
@@ -19,19 +21,13 @@ LANGUAGES = {
 }
 
 def get_welcome_text(lang):
-    greets = {
-        "Garo": "Mitela! Meghalaya a.songni Northeast AI-na welcome! 🏔️",
-        "Mizo": "Chibai! Meghalaya atanga Northeast AI-ah kan lo lawm a che! 🏔️",
-        "Khasi": "Khublei! Welcome from Meghalaya Northeast AI! 🏔️",
-    }
-    return greets.get(lang, "Welcome to our AI from Meghalaya! 🏔️")
+    return f"{lang} - Welcome to Northeast AI from Meghalaya! 🏔️"
 
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": get_welcome_text("Garo")}]
 
 st.title("🏔️ Northeast AI")
 st.markdown("**🌟 Meghalaya's First 10-Language Voice AI**")
-st.info("👇 Bhasa chuno, phir Type karo ya Mic se Bolo!")
 
 col1, col2 = st.columns([2,1])
 with col1:
@@ -41,81 +37,64 @@ with col2:
         st.session_state.messages = [{"role": "assistant", "content": get_welcome_text(lang)}]
         st.rerun()
 
+# --- FIXED - 3 line ko 1 line banayega ---
 def get_api_key():
+    raw = ""
     try:
         if hasattr(st, 'secrets'):
             for name in ["GROQ_API_KEY", "groq_api_key", "GROQ"]:
                 if name in st.secrets:
-                    v = str(st.secrets[name])
-                    v = v.replace("\n","").replace("\r","").replace(" ","").replace('"',"").replace("'","")
-                    if len(v) > 20 and v.startswith("gsk_"):
-                        return v
+                    raw = str(st.secrets[name])
+                    break
     except:
         pass
-    import os
-    return os.getenv("GROQ_API_KEY","").replace("\n","").strip()
+    if not raw:
+        raw = os.getenv("GROQ_API_KEY","")
+    # Saare Enter, Space, Quotes hatao
+    clean = "".join(raw.split())
+    clean = clean.replace('"','').replace("'","")
+    return clean
 
 def get_reply(text, language):
     low = text.lower().strip()
-    is_mizo = any(w in low for w in ["ngaihtuah","i dam em","chibai","ka lawm","muttui","thiam em","chanchin"])
-    is_hindi = any(w in low for w in ["kabre","batao","kaun hai","kya hai","mujhe","kaise","banana"])
-
-    if "chief minister" in low and "meghalaya" in low:
-        return "Hello! Chief Minister of Meghalaya is **Conrad K. Sangma**! NPP party, CM since 2018! Capital Shillong! 🏔️"
-    if "chief minister" in low and "mizoram" in low:
-        return "Chibai! Chief Minister of Mizoram is **Lalduhoma**! ZPM party! 🏔️"
-    if "capital" in low and "meghalaya" in low:
-        return "Hello! Capital of Meghalaya is **Shillong**! Scotland of the East! 🏔️"
-    if "prime minister" in low and "india" in low:
-        return "Hello! Prime Minister of India is **Narendra Modi**! Since 2014! 🏔️"
-
-    if "shillong" in low:
-        return "Hello! Shillong is capital of Meghalaya! Called Scotland of the East! Famous for Umiam Lake, Elephant Falls, Police Bazar! 🏔️"
-
-    if any(k in low for k in ["kaise ai bana","ai kaise ban","ai banana hai","how to make ai"]):
-        return f"Namaste! AI banana hai? {CREATOR_NAME} ne {CREATOR_PLACE} se banaya: 1) Python+Streamlit 2) groq.com se FREE API Key 3) Groq code 4) gTTS voice 5) Streamlit Cloud deploy! 💻🏔️"
-
-    quick = {
-        "muttui mangtha": "Muttui! Mangtha le! Naktukah kan in hmu leh dawn nia! 😴",
-        "eng nge chanchin": "Chanchin tha! Ka lawm e! Nang eng nge i chanchin? Chibai! 🏔️",
-        "i dam em": "Chibai! Ka dam e! Nang i dam em? 🏔️",
-        "chibai": "Chibai! Eng nge chanchin? Ka tha e! 🏔️",
-    }
-    for k in sorted(quick.keys(), key=len, reverse=True):
-        if k in low:
-            return quick[k]
-    if "mitela" in low: return "Mitela! Maikai? Anga tha! 😊🏔️"
-    if "khublei" in low: return "Khublei! Kumno long? 😊🏔️"
-
-    creator_keywords = ["who made you","kisne banaya","owner kaun","tumhe kisne banaya"]
-    if any(k in low for k in creator_keywords):
-        return f"Hello! I am Northeast AI! Created by {CREATOR_NAME} from {CREATOR_PLACE}! 🏔️"
-
     api_key = get_api_key()
-    if GROQ_AVAILABLE and api_key and len(api_key) > 20 and api_key.startswith("gsk_"):
+
+    # Sidebar me status
+    with st.sidebar:
+        if api_key.startswith("gsk_"):
+            st.success(f"✅ Key OK: len {len(api_key)}")
+        else:
+            st.error(f"❌ Key FAIL len {len(api_key)}")
+
+    # Groq - Sabse pehle try karo (CM wala block hata diya)
+    if GROQ_AVAILABLE and api_key.startswith("gsk_") and len(api_key) > 20:
         try:
             client = Groq(api_key=api_key)
             for model_name in ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "gemma2-9b-it"]:
                 try:
-                    target_lang = "Mizo" if is_mizo else ("Hindi" if is_hindi else language)
                     comp = client.chat.completions.create(
                         messages=[
-                            {"role": "system", "content": f"You are Northeast AI by {CREATOR_NAME} from {CREATOR_PLACE}. Reply in {target_lang} Roman only. Max 4 lines."},
+                            {"role": "system", "content": f"You are Northeast AI by {CREATOR_NAME} from {CREATOR_PLACE}. Reply in {language} Roman only. Max 6 lines, helpful."},
                             {"role": "user", "content": text}
                         ],
                         model=model_name,
-                        max_tokens=700,
+                        max_tokens=800,
                         temperature=0.7
                     )
                     content = comp.choices[0].message.content
                     if content and content.strip():
                         return content
-                except:
+                except Exception as e:
+                    last_err = str(e)
                     continue
-        except:
-            pass
+            return f"Groq Error: {last_err[:200]}"
+        except Exception as e:
+            return f"Groq Connect Error: {str(e)[:200]}"
 
-    return f"Hello! About '{text}' - CM of Meghalaya is Conrad Sangma, capital Shillong! Ask me anything! 🏔️"
+    # Fallback - sirf tab jab key hi nahi
+    if "chief minister" in low and "meghalaya" in low:
+        return "CM of Meghalaya is Conrad K. Sangma! 🏔️"
+    return f"⚠️ API Key missing/invalid (len {len(api_key)}). Secrets me naya gsk_ key lagao! 🏔️"
 
 def transcribe_voice(audio_file):
     api_key = get_api_key()
@@ -138,24 +117,13 @@ def speak_clear(text):
         tts.write_to_fp(fp)
         return fp.getvalue()
     except:
-        try:
-            tts = gTTS(text=text[:400], lang='en', slow=False)
-            fp = io.BytesIO()
-            tts.write_to_fp(fp)
-            return fp.getvalue()
-        except:
-            return None
+        return None
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
-        if msg["role"] == "assistant" and msg["content"].strip():
-            audio = speak_clear(msg["content"])
-            if audio:
-                st.audio(audio, format="audio/mp3")
 
 st.divider()
-st.markdown(f"**{LANGUAGES[lang]}! Type karo ya Mic dabao**")
 voice_input = st.audio_input(f"🎤 {lang} me Bolo")
 user_text = None
 if voice_input:
@@ -164,8 +132,6 @@ if voice_input:
         if transcribed:
             user_text = transcribed
             st.success(f"🎤 Suna: {transcribed}")
-        else:
-            user_text = f"Voice message in {lang}"
 
 text_input = st.chat_input(f"{LANGUAGES[lang]}! Yahan likho...")
 if text_input:
