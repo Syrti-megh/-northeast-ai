@@ -10,11 +10,12 @@ except:
 
 st.set_page_config(page_title="Northeast AI - Meghalaya", page_icon="🏔️", layout="centered")
 
-# FIXED CSS - Scroll, not wrap (code nahi tutega)
+# FINAL CSS - scroll fix + border
 st.markdown("""
 <style>
 div[data-testid="stCodeBlock"] {
     overflow-x: auto!important;
+    max-width: 100%!important;
 }
 div[data-testid="stCodeBlock"] pre {
     white-space: pre!important;
@@ -62,12 +63,21 @@ def get_api_key():
 
 def is_looping(text):
     t = text.lower()
-    if t.count("hriatna") > 3: return True
-    if t.count("thlawnna") > 3: return True
-    if t.count("chhuak a") > 3: return True
+    # Purane loops + naya screenshot wala loop
+    if t.count("hriatna") > 2: return True
+    if t.count("thlawnna") > 2: return True
+    if t.count("chhuak a") > 2: return True
     if t.count("phur chhuak") > 2: return True
-    if t.count("jingbeng") > 3: return True
-    if t.count("ka shaba") > 4: return True
+    if t.count("jingbeng") > 2: return True
+    if t.count("ka shaba") > 3: return True
+    if t.count("beng beng") > 1: return True
+    if t.count("a beng") > 2: return True
+    if t.count("gipa") > 3: return True
+    # same word 3 baar
+    words = t.split()
+    for i in range(len(words)-2):
+        if words[i]==words[i+1]==words[i+2]:
+            return True
     return False
 
 def get_reply(text, language):
@@ -75,9 +85,9 @@ def get_reply(text, language):
     if GROQ_AVAILABLE and api_key.startswith("gsk_") and len(api_key) > 20:
         try:
             client = Groq(api_key=api_key)
-            # FIXED PROMPT - clean multiline code
-            system_prompt = f"You are Northeast AI by Samewan from Meghalaya. User language is {language}. Never repeat words like hriatna, chhuak a. For Python code, give SIMPLE CLEAN multiline code. Use small example: a = float(input('Num1: ')) newline b = float(input('Num2: ')) newline if op == '+': print(a+b) etc. No one-line ternary like a/b if b else. Always in ```python block."
-            for model_name in ["meta-llama/llama-4-scout-17b-16e-instruct", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.1-8b-instant"]:
+            # FINAL PROMPT - no beng beng repeat
+            system_prompt = f"You are Northeast AI by Samewan from Meghalaya. User language: {language}. RULES: 1) Never repeat any word/phrase more than twice. 2) Do NOT say 'a beng beng' or 'a code gipa' repeatedly. 3) Give simple natural explanation in {language} - max 2 short sentences. 4) For Python code: give clean multiline code in ```python block with short labels like Num1, Num2, Op. Example: a = float(input('Num1: ')) newline b = float(input('Num2: ')) etc. No one-line ternary."
+            for model_name in ["meta-llama/llama-4-scout-17b-16e-instruct", "llama-3.1-8b-instant", "openai/gpt-oss-20b"]:
                 try:
                     comp = client.chat.completions.create(
                         messages=[
@@ -85,10 +95,10 @@ def get_reply(text, language):
                             {"role": "user", "content": text}
                         ],
                         model=model_name,
-                        max_tokens=1200,
-                        temperature=0.4,
-                        frequency_penalty=1.8,
-                        presence_penalty=0.8
+                        max_tokens=1000,
+                        temperature=0.2,
+                        frequency_penalty=2.0,
+                        presence_penalty=1.0
                     )
                     content = comp.choices[0].message.content
                     if content and content.strip():
