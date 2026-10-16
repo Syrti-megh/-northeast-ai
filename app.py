@@ -25,8 +25,18 @@ LANGUAGES = {
     "Nepali": "Namaste"
 }
 
+# FIRST TEXT - GARO + MIZO MIX NA HO, HAR BHASA KE LIYE ALAG
+def get_welcome_text(lang):
+    greets = {
+        "Garo": "Mitela! Meghalaya a·songni Northeast AI-na welcome! 🏔️ Anga Northeast ni gita 10-language voice AI! Nangni kusik gita bhasa se·na aro aganbo!",
+        "Mizo": "Chibai! Meghalaya atanga Northeast AI-ah kan lo lawm a che! 🏔️ Kei Northeast hmasa ber 10-language voice AI ka ni!",
+        "Khasi": "Khublei! Welcome to our AI from Meghalaya! 🏔️ Nga dei Northeast ka AI ba nyngkong eh ba 10 tylli ki ktien!",
+        "Kokborok": "Hamjakma! Meghalaya ni Northeast AI-o welcome! 🏔️ Ang Northeast ni 10-language voice AI!",
+    }
+    return greets.get(lang, "Welcome to our AI from Meghalaya! 🏔️ Main Northeast ka pehla 10-language voice AI hu. Apni bhasa chuno aur bolo!")
+
 if "messages" not in st.session_state:
-    st.session_state.messages=[{"role":"assistant","content":"Welcome to our AI from Meghalaya! 🏔️ Main Northeast ka pehla 10-language voice AI hu. Apni bhasa chuno aur bolo, main Roman English me clear jawab dunga."}]
+    st.session_state.messages=[{"role":"assistant","content": get_welcome_text("Garo")}]
 
 st.title("🏔️ Northeast AI")
 st.markdown("""
@@ -41,7 +51,7 @@ with col1:
     lang = st.selectbox("🌐 Language Chuno:", list(LANGUAGES.keys()), index=0)
 with col2:
     if st.button("🗑️ Clear"):
-        st.session_state.messages=[{"role":"assistant","content":"Welcome to our AI from Meghalaya! 🏔️ Bolo, kya help chahiye?"}]
+        st.session_state.messages=[{"role":"assistant","content": get_welcome_text(lang)}]
         st.rerun()
 
 def get_api_key():
@@ -50,115 +60,72 @@ def get_api_key():
 
 def get_reply(text, language):
     low=text.lower()
-    # FIXED: Garo ka biming wala sawal add kiya
-    creator_keywords = ["who made you","kisne banaya","tumhe kisne","creator","banaya kisne","who created","kaun bana","kon banaya","kisne bnaya","tumko kaun","tujhe kisne","tumhe kaun","tum ko kaun","bana ia","kaun banaya","nangni biming","nang biming","biming ra","bimung ra","bimung","your name","tera naam","tumhara naam","na chusokna","na·a chusokna","ming ra","biming"]
+    # ALL 10 LANGUAGE CREATOR KEYWORDS - FIXED
+    creator_keywords = [
+        "who made you","kisne banaya","tumhe kisne","creator","banaya kisne","who created","kaun bana","kon banaya","kisne bnaya","tumko kaun","tujhe kisne","tumhe kaun","tum ko kaun","bana ia","kaun banaya",
+        "nangni biming","nang biming","biming ra","bimung ra","bimung","chusokna","na·a chusokna","angko chusokna",
+        "i hming eng nge","eng nge i hming","tuin siam","tu nge siam","min siam","nang siam","i hming","hming eng",
+        "ka kyrteng","ei kyrteng","phi kyrteng","who created you","ka kyrteng eh","boh kyrteng",
+        "nini mung","mung borok","sa kha","mung uan",
+        "your name","tera naam","tumhara naam","apka naam","tumar nam"
+    ]
+
     if any(k in low for k in creator_keywords):
-        if language == "Garo":
-            return f"Mitela! Anga Northeast AI! Angko {CREATOR_NAME} ne {CREATOR_PLACE} ni a·song se chon·a! 🏔️"
-        return f"Mujhe banaya hai {CREATOR_NAME} ne, {CREATOR_PLACE} se! 🏔️"
+        CREATOR_REPLIES = {
+            "Garo": f"Mitela! Anga Northeast AI! Angko {CREATOR_NAME} ne {CREATOR_PLACE} ni a·song se chon·a! 🏔️",
+            "Mizo": f"Chibai! Kei Northeast AI ka ni! Min siamtu chu {CREATOR_NAME} a ni, {CREATOR_PLACE} atangin! 🏔️",
+            "Khasi": f"Khublei! Nga dei Northeast AI! Ia shna da {CREATOR_NAME} na {CREATOR_PLACE}! 🏔️",
+            "Kokborok": f"Hamjakma! Ang Northeast AI! Ano {CREATOR_NAME} {CREATOR_PLACE} ni! 🏔️",
+            "Assamese": f"Nomoskar! Moi Northeast AI! Muk {CREATOR_NAME} e {CREATOR_PLACE} r pora banaisa! 🏔️",
+            "Bengali": f"Nomoskar! Ami Northeast AI! Amake {CREATOR_NAME} {CREATOR_PLACE} theke baniyeche! 🏔️",
+            "Hindi": f"Namaste! Main Northeast AI hu! Mujhe {CREATOR_NAME} ne {CREATOR_PLACE} se banaya hai! 🏔️",
+            "English": f"Hello! I am Northeast AI! I was created by {CREATOR_NAME} from {CREATOR_PLACE}! 🏔️",
+            "Nagamese": f"Hello! Moi Northeast AI! Moi ke {CREATOR_NAME} {CREATOR_PLACE} para bonaise! 🏔️",
+            "Nepali": f"Namaste! Ma Northeast AI hu! Malai {CREATOR_NAME} le {CREATOR_PLACE} bata banayeko ho! 🏔️"
+        }
+        return CREATOR_REPLIES.get(language, f"Mujhe banaya hai {CREATOR_NAME} ne, {CREATOR_PLACE} se! 🏔️")
+
+    # MIZORAM FAMOUS QUESTION - DIRECT ANSWER TO AVOID LOOP
+    if "mizoram hi eng nge lar" in low or ("mizoram" in low and "lar" in low):
+        return "Chibai! Mizoram is famous for Aizawl city, blue mountains (Mizo Hills), Chapchar Kut festival, bamboo dance (Cheraw), and beautiful churches! Very peaceful state! 🏔️"
+    if "garo hills" in low or "meghalaya" in low and "famous" in low:
+        return f"{LANGUAGES[language]}! Meghalaya is famous for Cherrapunji, living root bridges, Dawki river, Shillong hills and Garo, Khasi culture! 🏔️"
 
     api_key=get_api_key()
     if GROQ_AVAILABLE and api_key:
         try:
             client=Groq(api_key=api_key)
-            if language == "Garo":
-                prompt = f"You are Northeast AI from Meghalaya, made by {CREATOR_NAME}. User speaks Garo. User said: {text}. Reply in simple Roman Garo + English mix like 'Mitela! Anga...' Do not say OpenAI. No looping. Only A-Z letters. Max 4 lines."
-            elif language in ["Khasi", "Mizo", "Kokborok", "Nagamese"]:
-                prompt = f"You are Northeast AI from Meghalaya, made by {CREATOR_NAME}. User lang {language}. Reply in simple {language} Roman + English, max 3 lines, no loop, no OpenAI. User: {text}"
+            # TRIBAL LANGUAGE = QWEN MODEL (NO LOOP) - MAIN FIX
+            if language in ["Mizo", "Garo", "Khasi", "Kokborok", "Nagamese"]:
+                model_to_use = "qwen/qwen3-32b"
+                prompt = f"You are Northeast AI from Meghalaya created by {CREATOR_NAME}. User language is {language}. User says: {text}. Reply in simple {language} + English mix, max 3-4 lines, clear, no repeating same word more than twice. If {language} is hard, reply mostly in simple English. Never say OpenAI. Never repeat 'chhuak a chhuak' or 'a hmu a ni'."
             else:
-                prompt = f"You are Northeast AI from Meghalaya. Do NOT mention creator {CREATOR_NAME} unless asked. Never say OpenAI. ONLY Roman English A-Z. Language={language}. User: {text}"
+                model_to_use = "openai/gpt-oss-20b"
+                prompt = f"You are Northeast AI from Meghalaya. Never say OpenAI. Reply in Roman {language} only A-Z. Language={language}. User: {text}. Max 4 lines."
 
             comp=client.chat.completions.create(
-                messages=[{"role":"system","content":"You are Northeast AI from Meghalaya. Reply only in Roman letters, no loops, no OpenAI."},{"role":"user","content":prompt}],
-                model="openai/gpt-oss-20b",
-                max_tokens=800,
-                temperature=0.6,
-                extra_body={"reasoning_effort": "low"}
+                messages=[
+                    {"role":"system","content":f"You are Northeast AI from Meghalaya. Made by {CREATOR_NAME}. Reply in Roman only, no loops, no OpenAI, no repeat words."},
+                    {"role":"user","content":prompt}
+                ],
+                model=model_to_use,
+                max_tokens=700,
+                temperature=0.7
             )
             content = comp.choices[0].message.content
             if content and content.strip():
-                if "openai" in content.lower():
-                    return f"{LANGUAGES[language]}! Bolo kya help chahiye?"
+                # LOOP DETECTION - AGAR LOOP KARE TO FALLBACK
+                lower_c = content.lower()
+                if lower_c.count("chhuak") > 3 or lower_c.count("a hmu a ni") > 1 or "chhuak a, a chhuak" in lower_c:
+                    if language == "Mizo":
+                        return "Chibai! Mizoram is famous for hills, festivals and culture! Aizawl is capital! 🏔️"
+                    else:
+                        return f"{LANGUAGES[language]}! Mizoram/Garo Hills is very beautiful with hills and culture! 🏔️"
+                if "openai" in lower_c:
+                    return f"{LANGUAGES[language]}! Bolo kya help chahiye? 🏔️"
                 return content
             else:
                 raise Exception("Empty")
         except Exception as e:
             try:
-                prompt2 = f"Reply in {language} but ONLY Roman English A-Z, no repeat, no creator mention. User: {text}"
-                comp=client.chat.completions.create(
-                    messages=[{"role":"user","content":prompt2}],
-                    model="qwen/qwen3-32b",
-                    max_tokens=500)
-                return comp.choices[0].message.content or f"{LANGUAGES[language]}! Hii"
-            except Exception as e2:
-                if language == "Garo":
-                    return f"Mitela! Anga Northeast AI! Maikai help nangna?"
-                return f"{LANGUAGES[language]}! Bolo kya puchna hai?"
-    return f"{LANGUAGES[language]}! You said: {text} in {language}."
-
-def transcribe_voice(audio_file):
-    api_key=get_api_key()
-    if GROQ_AVAILABLE and api_key and audio_file:
-        try:
-            client=Groq(api_key=api_key)
-            tr=client.audio.transcriptions.create(
-                file=("voice.wav", audio_file.getvalue()),
-                model="whisper-large-v3"
-            )
-            return tr.text
-        except:
-            return None
-    return None
-
-def speak_clear(text):
-    try:
-        tts=gTTS(text=text[:400], lang='en', tld='co.in', slow=False)
-        fp=io.BytesIO()
-        tts.write_to_fp(fp)
-        return fp.getvalue()
-    except:
-        try:
-            tts=gTTS(text=text[:400], lang='en', slow=False)
-            fp=io.BytesIO()
-            tts.write_to_fp(fp)
-            return fp.getvalue()
-        except:
-            return None
-
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.write(msg["content"])
-        if msg["role"]=="assistant" and msg["content"].strip():
-            audio = speak_clear(msg["content"])
-            if audio:
-                st.audio(audio, format="audio/mp3")
-
-st.divider()
-st.markdown(f"**{LANGUAGES[lang]}! Type karo ya Mic dabao 🎤**")
-
-voice_input = st.audio_input(f"🎤 {lang} me Bolo")
-user_text = None
-if voice_input:
-    with st.spinner("Sun raha hu..."):
-        transcribed = transcribe_voice(voice_input)
-        if transcribed:
-            user_text = transcribed
-            st.success(f"🎤 Suna: {transcribed}")
-        else:
-            user_text = f"Voice message in {lang}"
-
-text_input = st.chat_input(f"{LANGUAGES[lang]}! Yahan likho...")
-if text_input:
-    user_text = text_input
-
-if user_text:
-    st.session_state.messages.append({"role":"user","content":user_text})
-    with st.chat_message("user"):
-        st.write(user_text)
-    reply=get_reply(user_text, lang)
-    st.session_state.messages.append({"role":"assistant","content":reply})
-    with st.chat_message("assistant"):
-        st.write(reply)
-        audio = speak_clear(reply)
-        if audio:
-            st.audio(audio, format="audio/mp3", autoplay=True)
+                comp=client.chat.com
