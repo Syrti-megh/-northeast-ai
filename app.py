@@ -48,69 +48,78 @@ def get_api_key():
 
 def get_reply(text, language):
     low = text.lower().strip()
+    # Auto-detect Mizo
+    is_mizo = any(w in low for w in ["ngaihtuah","i dam em","chibai","ka lawm","muttui","thiam em","chanchin","hla"])
 
-    # 1. QUICK DICTIONARY - Sorted longest first to avoid overlap
+    # === 1. KNOWLEDGE BASE - SHILLONG FIX ===
+    if "shillong" in low:
+        if language == "Hindi" or "kabre" in low or "batao" in low:
+            return "Namaste! Shillong Meghalaya ki capital hai! Ise Scotland of the East kehte hain! Umiam Lake, Elephant Falls, Police Bazar, Laitlum Canyon yahan famous hai! Bahut khoobsurat hill station! 🏔️"
+        return "Hello! Shillong is the capital of Meghalaya! Called Scotland of the East! Famous for Umiam Lake, Elephant Falls, Police Bazar, Laitlum Canyon! Beautiful hill station! 🏔️"
+    if "cherrapunji" in low or "sohra" in low:
+        return "Hello! Cherrapunji (Sohra) is famous for heavy rainfall! Living root bridges and Nohkalikai Falls are here! In Meghalaya! 🏔️"
+    if "aizawl" in low:
+        return "Chibai! Aizawl chu Mizoram capital a ni! Tlang chungah a awm! 🏔️"
+
+    # === 2. QUICK DICTIONARY - FIXED (Language independent) ===
     quick = {
-        "muttui mangtha": {"Mizo": "Muttui! Mangtha le! Naktukah kan in hmu leh dawn nia! 😴"},
-        "mizoram hi eng nge lar": {"Mizo": "Chibai! Mizoram is famous for Aizawl city, blue mountains, Chapchar Kut, Cheraw dance, peaceful churches! 🏔️"},
-        "mizoram economy": {"Mizo": "Chibai! Mizoram economy chu agriculture, bamboo, handloom ah a innghat! Jhum cultivation a lar e! 🏔️"},
-        "eng nge chanchin": {"Mizo": "Chanchin tha! Ka lawm e! Nang eng nge i chanchin? Chibai! 🏔️"},
-        "hla i thiam": {"Mizo": "Chibai! Aw, Mizo hla ka thiam ve e! Chhawrpial Run leh Lengdang Phai ka hre ve! Nang i thiam em? 🎵🏔️"},
-        "ka lawm e": {"Mizo": "Keipawh ka lawm e! Chibai! Chanchin tha e! 😊🏔️"},
-        "ngaihtuah": {"Mizo": "Chibai! Ka ngaihtuah chu nangmah! Eng nge ka pui theih che? I tan ka awm e! 😊🏔️"},
-        "thiam em": {"Mizo": "Chibai! Ka thiam e! Mizo tawng ka thiam ve tawh! Eng zawhna nge i neih? 🏔️"},
-        "i dam em": {"Mizo": "Chibai! Ka dam e! Nang i dam em? Chanchin tha maw? 🏔️"},
-        "muttui": {"Mizo": "Muttui! I mu tui dawn nia! 😴✨"},
-        "chibai": {"Mizo": "Chibai! Eng nge chanchin? Ka tha e! Nang? 🏔️"},
-        "mitela": {"Garo": "Mitela! Maikai? Anga tha! Nang? 😊🏔️"},
-        "khublei": {"Khasi": "Khublei! Kumno long? Nga bha! 😊🏔️"},
-        "hamjakma": {"Kokborok": "Hamjakma! Nung tamo? Ang hamjak! 😊🏔️"},
+        "muttui mangtha": "Muttui! Mangtha le! Naktukah kan in hmu leh dawn nia! 😴",
+        "mizoram hi eng nge lar": "Chibai! Mizoram is famous for Aizawl city, blue mountains, Chapchar Kut, Cheraw dance, peaceful churches! 🏔️",
+        "mizoram economy": "Chibai! Mizoram economy chu agriculture, bamboo, handloom ah a innghat! Jhum cultivation a lar e! 🏔️",
+        "eng nge chanchin": "Chanchin tha! Ka lawm e! Nang eng nge i chanchin? Chibai! 🏔️",
+        "hla i thiam": "Chibai! Aw, Mizo hla ka thiam ve e! Chhawrpial Run leh Lengdang Phai ka hre ve! Nang i thiam em? 🎵🏔️",
+        "ka lawm e": "Keipawh ka lawm e! Chibai! Chanchin tha e! 😊🏔️",
+        "ngaihtuah": "Chibai! Ka ngaihtuah chu nangmah! Eng nge ka pui theih che? I tan ka awm e! 😊🏔️",
+        "thiam em": "Chibai! Ka thiam e! Mizo tawng ka thiam ve tawh! Eng zawhna nge i neih? 🏔️",
+        "i dam em": "Chibai! Ka dam e! Nang i dam em? Chanchin tha maw? 🏔️",
+        "muttui": "Muttui! I mu tui dawn nia! 😴✨",
+        "chibai": "Chibai! Eng nge chanchin? Ka tha e! Nang? 🏔️",
     }
-
-    # Check longest keys first
     for key in sorted(quick.keys(), key=len, reverse=True):
         if key in low:
-            if language in quick[key]:
-                return quick[key][language]
-            if language == "Mizo" and "Mizo" in quick[key]:
-                return quick[key]["Mizo"]
+            return quick[key]
 
-    # 2. Creator
-    creator_keywords = ["who made you","kisne banaya","creator","i hming eng nge","eng nge i hming","tuin siam","your name"]
+    # Garo/Khasi quick
+    if "mitela" in low: return "Mitela! Maikai? Anga tha! Nang? 😊🏔️"
+    if "khublei" in low: return "Khublei! Kumno long? Nga bha! 😊🏔️"
+    if "hamjakma" in low: return "Hamjakma! Nung tamo? Ang hamjak! 😊🏔️"
+
+    # === 3. CREATOR - Narrow check ===
+    creator_keywords = ["who made you","kisne banaya","who created you","creator kaun","tuin siam che","i hming eng nge"]
     if any(k in low for k in creator_keywords):
-        return f"Chibai! Kei Northeast AI ka ni! Min siamtu chu {CREATOR_NAME} a ni, {CREATOR_PLACE} atangin! 🏔️"
+        if is_mizo or language == "Mizo":
+            return f"Chibai! Kei Northeast AI ka ni! Min siamtu chu {CREATOR_NAME} a ni, {CREATOR_PLACE} atangin! 🏔️"
+        if language == "Hindi":
+            return f"Namaste! Main Northeast AI hu! Mujhe {CREATOR_NAME} ne {CREATOR_PLACE} se banaya hai! 🏔️"
+        return f"Hello! I am Northeast AI! Created by {CREATOR_NAME} from {CREATOR_PLACE}! 🏔️"
 
-    # 3. Groq API
+    # === 4. GROQ API ===
     api_key = get_api_key()
     if GROQ_AVAILABLE and api_key:
         try:
             client = Groq(api_key=api_key)
-            model_to_use = "qwen/qwen3-32b"
+            target_lang = "Mizo" if is_mizo else language
             comp = client.chat.completions.create(
                 messages=[
-                    {"role":"system","content": f"You are Northeast AI made by {CREATOR_NAME} from {CREATOR_PLACE}. You MUST reply in {language} only, Roman letters. No English if language is Mizo. Max 3 lines."},
-                    {"role":"user","content": f"Reply in {language}: {text}"}
+                    {"role":"system","content": f"You are Northeast AI made by {CREATOR_NAME} from {CREATOR_PLACE}. You MUST reply in {target_lang} only, Roman letters. Max 3 lines."},
+                    {"role":"user","content": f"Reply in {target_lang}: {text}"}
                 ],
-                model=model_to_use, max_tokens=500, temperature=0.6
+                model="qwen/qwen3-32b", max_tokens=500, temperature=0.6
             )
             content = comp.choices[0].message.content
             if content and content.strip():
-                if "openai" in content.lower():
-                    content = content.replace("OpenAI", CREATOR_NAME)
-                return content
+                return content.replace("OpenAI", CREATOR_NAME)
         except:
             pass
 
-    # 4. FINAL FALLBACK - PURE MIZO, NO "You said" EVER
-    if language == "Mizo":
+    # === 5. SMART FALLBACK - No creator spam ===
+    if is_mizo:
         return "Chibai! Ka ngaihtuah chu nangmah! Eng nge ka pui theih che? I tan ka awm e! 😊🏔️"
-    if language == "Garo":
-        return f"Mitela! Anga Northeast AI! Angko {CREATOR_NAME} ne {CREATOR_PLACE} ni a·song se chon·a! 🏔️"
-    if language == "Khasi":
-        return f"Khublei! Nga dei Northeast AI! Ia shna da {CREATOR_NAME} na {CREATOR_PLACE}! 🏔️"
-    if language == "Kokborok":
-        return f"Hamjakma! Ang Northeast AI! Ano {CREATOR_NAME} {CREATOR_PLACE} ni! 🏔️"
-    return f"{LANGUAGES.get(language,'Hello')}! I am Northeast AI made by {CREATOR_NAME} from {CREATOR_PLACE}! 🏔️"
+    if "shillong" in low:
+        return "Hello! Shillong is capital of Meghalaya! Scotland of the East! Famous for Umiam Lake, Elephant Falls! 🏔️"
+    if language == "Hindi":
+        return f"Namaste! '{text}' ke baare me - Northeast bahut khoobsurat hai! Shillong, Meghalaya ke baare me pucho! 🏔️"
+    return f"Hello! About '{text}' - Northeast is beautiful! Ask me about Shillong, Meghalaya, Mizoram! 🏔️"
 
 def transcribe_voice(audio_file):
     api_key=get_api_key()
@@ -119,32 +128,25 @@ def transcribe_voice(audio_file):
             client=Groq(api_key=api_key)
             tr=client.audio.transcriptions.create(file=("voice.wav", audio_file.getvalue()), model="whisper-large-v3")
             return tr.text
-        except:
-            return None
+        except: return None
     return None
 
 def speak_clear(text):
     try:
         tts=gTTS(text=text[:400], lang='en', tld='co.in', slow=False)
-        fp=io.BytesIO()
-        tts.write_to_fp(fp)
-        return fp.getvalue()
+        fp=io.BytesIO(); tts.write_to_fp(fp); return fp.getvalue()
     except:
         try:
             tts=gTTS(text=text[:400], lang='en', slow=False)
-            fp=io.BytesIO()
-            tts.write_to_fp(fp)
-            return fp.getvalue()
-        except:
-            return None
+            fp=io.BytesIO(); tts.write_to_fp(fp); return fp.getvalue()
+        except: return None
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
         if msg["role"]=="assistant" and msg["content"].strip():
             audio = speak_clear(msg["content"])
-            if audio:
-                st.audio(audio, format="audio/mp3")
+            if audio: st.audio(audio, format="audio/mp3")
 
 st.divider()
 st.markdown(f"**{LANGUAGES[lang]}! Type karo ya Mic dabao**")
@@ -158,19 +160,14 @@ if voice_input:
             st.success(f"🎤 Suna: {transcribed}")
         else:
             user_text = f"Voice message in {lang}"
-
 text_input = st.chat_input(f"{LANGUAGES[lang]}! Yahan likho...")
-if text_input:
-    user_text = text_input
-
+if text_input: user_text = text_input
 if user_text:
     st.session_state.messages.append({"role":"user","content":user_text})
-    with st.chat_message("user"):
-        st.write(user_text)
+    with st.chat_message("user"): st.write(user_text)
     reply=get_reply(user_text, lang)
     st.session_state.messages.append({"role":"assistant","content":reply})
     with st.chat_message("assistant"):
         st.write(reply)
         audio = speak_clear(reply)
-        if audio:
-            st.audio(audio, format="audio/mp3", autoplay=True)
+        if audio: st.audio(audio, format="audio/mp3", autoplay=True)
