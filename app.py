@@ -10,7 +10,7 @@ except:
 
 st.set_page_config(page_title="Northeast AI - Meghalaya", page_icon="🏔️", layout="centered")
 
-# FINAL CSS - scroll fix + border
+# FINAL CSS - scroll fix + border + code wrap
 st.markdown("""
 <style>
 div[data-testid="stCodeBlock"] {
@@ -63,21 +63,21 @@ def get_api_key():
 
 def is_looping(text):
     t = text.lower()
-    # Purane loops + naya screenshot wala loop
-    if t.count("hriatna") > 2: return True
-    if t.count("thlawnna") > 2: return True
-    if t.count("chhuak a") > 2: return True
-    if t.count("phur chhuak") > 2: return True
-    if t.count("jingbeng") > 2: return True
-    if t.count("ka shaba") > 3: return True
-    if t.count("beng beng") > 1: return True
-    if t.count("a beng") > 2: return True
-    if t.count("gipa") > 3: return True
-    # same word 3 baar
+    # Mizo + Garo + Khasi loops - UPDATED
+    bad_phrases = ["hriatna", "thlawnna", "chhuak a", "phur chhuak", "jingbeng", "ka shaba", "beng beng", "a beng", "gipa", "jingpynshang", "jingpyrkhat", "jingmut", "ka jing"]
+    for phrase in bad_phrases:
+        if t.count(phrase) >= 3: # 3 baar se zyada aaya to loop
+            return True
+
+    # same word 3 baar lagatar
     words = t.split()
     for i in range(len(words)-2):
         if words[i]==words[i+1]==words[i+2]:
             return True
+        # Khasi special: "ka" har doosre word me
+        if i < len(words)-4 and words[i]=="ka" and words[i+2]=="ka" and words[i+4]=="ka":
+            if words[i+1]==words[i+3]:
+                return True
     return False
 
 def get_reply(text, language):
@@ -85,9 +85,11 @@ def get_reply(text, language):
     if GROQ_AVAILABLE and api_key.startswith("gsk_") and len(api_key) > 20:
         try:
             client = Groq(api_key=api_key)
-            # FINAL PROMPT - no beng beng repeat
-            system_prompt = f"You are Northeast AI by Samewan from Meghalaya. User language: {language}. RULES: 1) Never repeat any word/phrase more than twice. 2) Do NOT say 'a beng beng' or 'a code gipa' repeatedly. 3) Give simple natural explanation in {language} - max 2 short sentences. 4) For Python code: give clean multiline code in ```python block with short labels like Num1, Num2, Op. Example: a = float(input('Num1: ')) newline b = float(input('Num2: ')) etc. No one-line ternary."
-            for model_name in ["meta-llama/llama-4-scout-17b-16e-instruct", "llama-3.1-8b-instant", "openai/gpt-oss-20b"]:
+            # FINAL PROMPT - Khasi fix added
+            system_prompt = f"You are Northeast AI by Samewan from Meghalaya. User language: {language}. CRITICAL RULES: 1) Answer in {language} only. 2) NEVER repeat any word more than twice. 3) BANNED PHRASES: 'a beng beng', 'jingpynshang', 'jingpyrkhat', 'hriatna'. If you use them once, STOP. 4) Max 2 short sentences, simple words. 5) For Python code: Give CLEAN multiline code in ```python block. Use short vars Num1, Num2, Op, result. Format: Num1 = float(input('Num1: ')) NEWLINE Num2 = float(input('Num2: ')) NEWLINE if Op == '+': result = Num1 + Num2 etc. Always end with print(result). No one-line ternary."
+
+            last_err = "No model worked"
+            for model_name in ["llama-3.1-8b-instant", "meta-llama/llama-4-scout-17b-16e-instruct", "openai/gpt-oss-20b"]:
                 try:
                     comp = client.chat.completions.create(
                         messages=[
@@ -95,14 +97,16 @@ def get_reply(text, language):
                             {"role": "user", "content": text}
                         ],
                         model=model_name,
-                        max_tokens=1000,
-                        temperature=0.2,
+                        max_tokens=800,
+                        temperature=0.1, # 0.2 se 0.1 - loop kam hoga
+                        top_p=0.8,
                         frequency_penalty=2.0,
-                        presence_penalty=1.0
+                        presence_penalty=1.5
                     )
                     content = comp.choices[0].message.content
                     if content and content.strip():
                         if is_looping(content):
+                            print(f"Loop detected in {model_name}, retrying...")
                             continue
                         return content
                 except Exception as e:
@@ -130,7 +134,10 @@ def transcribe_voice(audio_file):
 def speak_clear(text):
     try:
         clean = re.sub(r"```.*?```", " ", text, flags=re.DOTALL)
-        clean = clean[:400]
+        clean = re.sub(r"[^\w\s,.]", " ", clean)
+        clean = clean[:350].strip()
+        if len(clean) < 5:
+            return None
         tts = gTTS(text=clean, lang='en', tld='co.in', slow=False)
         fp = io.BytesIO()
         tts.write_to_fp(fp)
@@ -145,7 +152,11 @@ def render_message(content):
             st.write(text_part)
         codes = re.findall(r"```(?:python)?(.*?)```", content, re.DOTALL)
         for c in codes:
-            st.code(c.strip(), language="python")
+            code_clean = c.strip()
+            # Fix truncated last line like "result" alone
+            if code_clean.endswith("\n result") or code_clean.endswith("\n result"):
+                code_clean += " = 'Invalid'"
+            st.code(code_clean, language="python")
     else:
         st.write(content)
 
