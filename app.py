@@ -1,6 +1,6 @@
 import streamlit as st
 from gtts import gTTS
-import io, os
+import io, os, re
 
 try:
     from groq import Groq
@@ -69,8 +69,7 @@ def get_reply(text, language):
     if GROQ_AVAILABLE and api_key.startswith("gsk_") and len(api_key) > 20:
         try:
             client = Groq(api_key=api_key)
-            system_prompt = "You are Northeast AI by Samewan from Meghalaya. User language is " + language + ". Reply in simple Roman. If " + language + " is Mizo, Khasi, Garo, Kokborok and you are not fluent, reply in simple Hindi + English mix but never repeat same phrase like a chhuak a or jingbeng or hriatna. Max 6 lines."
-            # FIXED ORDER: Scout first for Mizo/Khasi
+            system_prompt = "You are Northeast AI by Samewan from Meghalaya. User language is " + language + ". Reply in simple Roman. If " + language + " is Mizo, Khasi, Garo, Kokborok and you are not fluent, reply in simple Hindi + English mix but never repeat same phrase like a chhuak a or jingbeng or hriatna. If user asks for code, give code in proper python markdown block ```python... ```. Max 10 lines explanation."
             for model_name in ["meta-llama/llama-4-scout-17b-16e-instruct", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.1-8b-instant"]:
                 try:
                     comp = client.chat.completions.create(
@@ -79,7 +78,7 @@ def get_reply(text, language):
                             {"role": "user", "content": text}
                         ],
                         model=model_name,
-                        max_tokens=800,
+                        max_tokens=1200,
                         temperature=0.5,
                         frequency_penalty=1.8,
                         presence_penalty=0.8
@@ -113,16 +112,68 @@ def transcribe_voice(audio_file):
 
 def speak_clear(text):
     try:
-        tts = gTTS(text=text[:400], lang='en', tld='co.in', slow=False)
+        # code hata ke voice
+        clean = re.sub(r"```.*?```", " ", text, flags=re.DOTALL)
+        clean = clean[:400]
+        tts = gTTS(text=clean, lang='en', tld='co.in', slow=False)
         fp = io.BytesIO()
         tts.write_to_fp(fp)
         return fp.getvalue()
     except:
         return None
 
+def render_message(content):
+    # Code block hai to alag render
+    if "```" in content:
+        parts = re.split(r"```(?:python)?", content)
+        for i, part in enumerate(parts):
+            if "```" in part:
+                code_part, rest = part.split("```", 1)
+                st.code(code_part.strip(), language="python")
+                if rest.strip():
+                    st.write(rest.strip())
+            else:
+                if i == 0:
+                    if part.strip():
+                        st.write(part.strip())
+                else:
+                    # pehla part code tha
+                    if "```" not in content.split("```")[i-1]:
+                        st.code(part.split("```")[0].strip(), language="python")
+                    else:
+                        st.write(part.strip())
+        # simple fallback
+        if not re.search(r"```", content) or content.count("```") < 2:
+             # manual
+            codes = re.findall(r"```(?:python)?(.*?)```", content, re.DOTALL)
+            if codes:
+                text_only = re.sub(r"```(?:python)?(.*?)```", "", content, flags=re.DOTALL).strip()
+                if text_only:
+                    st.write(text_only)
+                for c in codes:
+                    st.code(c.strip(), language="python")
+            else:
+                st.write(content)
+    elif "input(" in content and "print(" in content:
+        # raw python code without markdown
+        lines = content.split("\n")
+        text_lines = []
+        code_lines = []
+        for line in lines:
+            if "input(" in line or "print(" in line or "float(" in line or "def " in line or "=" in line and "(" in line:
+                code_lines.append(line)
+            else:
+                text_lines.append(line)
+        if text_lines:
+            st.write("\n".join(text_lines))
+        if code_lines:
+            st.code("\n".join(code_lines), language="python")
+    else:
+        st.write(content)
+
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
-        st.write(msg["content"])
+        render_message(msg["content"])
 
 st.divider()
 
@@ -146,7 +197,7 @@ if user_text:
     reply = get_reply(user_text, lang)
     st.session_state.messages.append({"role": "assistant", "content": reply})
     with st.chat_message("assistant"):
-        st.write(reply)
+        render_message(reply)
         audio = speak_clear(reply)
         if audio:
             st.audio(audio, format="audio/mp3", autoplay=True)
