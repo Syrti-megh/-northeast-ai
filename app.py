@@ -56,20 +56,26 @@ def get_reply(text, language):
     if GROQ_AVAILABLE and api_key:
         try:
             client=Groq(api_key=api_key)
-            # NAYA WORKING MODEL - 2026
             comp=client.chat.completions.create(
                 messages=[{"role":"user","content":f"You are Northeast AI, creator {CREATOR_NAME} from {CREATOR_PLACE}. Reply in {language}. User: {text}"}],
-                model="openai/gpt-oss-20b", max_tokens=300)
-            return comp.choices[0].message.content
+                model="openai/gpt-oss-20b",
+                max_tokens=1000,
+                extra_body={"reasoning_effort": "low"}
+            )
+            content = comp.choices[0].message.content
+            if content and content.strip():
+                return content
+            else:
+                raise Exception("Empty response, trying fallback")
         except Exception as e:
-            # Agar ye bhi fail to dusra try karo
             try:
                 comp=client.chat.completions.create(
                     messages=[{"role":"user","content":f"You are Northeast AI, creator {CREATOR_NAME} from {CREATOR_PLACE}. Reply in {language}. User: {text}"}],
-                    model="llama-3.1-8b-instant", max_tokens=300)
-                return comp.choices[0].message.content
+                    model="qwen/qwen3-32b",
+                    max_tokens=500)
+                return comp.choices[0].message.content or f"{LANGUAGES[language]}! Hii"
             except Exception as e2:
-                return f"Groq Error: {e2}"
+                return f"{LANGUAGES[language]}! You said {text}. Main {CREATOR_NAME} ka AI hu!"
     return f"{LANGUAGES[language]}! You said: {text} in {language}."
 
 def transcribe_voice(audio_file):
@@ -89,7 +95,7 @@ def transcribe_voice(audio_file):
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
-        if msg["role"]=="assistant":
+        if msg["role"]=="assistant" and msg["content"].strip():
             try:
                 tts=gTTS(text=msg["content"][:350], lang='en')
                 fp=io.BytesIO()
@@ -127,10 +133,11 @@ if user_text:
     st.session_state.messages.append({"role":"assistant","content":reply})
     with st.chat_message("assistant"):
         st.write(reply)
-        try:
-            tts=gTTS(text=reply[:350], lang='en')
-            fp=io.BytesIO()
-            tts.write_to_fp(fp)
-            st.audio(fp.getvalue(), format="audio/mp3", autoplay=True)
-        except Exception as e:
-            st.write(f"Audio error: {e}")
+        if reply.strip():
+            try:
+                tts=gTTS(text=reply[:350], lang='en')
+                fp=io.BytesIO()
+                tts.write_to_fp(fp)
+                st.audio(fp.getvalue(), format="audio/mp3", autoplay=True)
+            except Exception as e:
+                pass
