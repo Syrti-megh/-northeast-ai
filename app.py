@@ -21,7 +21,8 @@ LANGUAGES = {
     "Bengali": "Nomoskar",
     "Hindi": "Namaste",
     "English": "Hello",
-    "Nagamese": "Hello"
+    "Nagamese": "Hello",
+    "Nepali": "Namaste"
 }
 
 if "messages" not in st.session_state:
@@ -29,9 +30,9 @@ if "messages" not in st.session_state:
 
 st.title("🏔️ Northeast AI")
 st.markdown("""
-**🌟 Meghalaya's First 9-Language Voice AI | Northeast India**
+**🌟 Meghalaya's First 10-Language Voice AI | Northeast India**
 🎙️ **Bolke puchho, sunke samjho** - Apni bhasa me baat karo!
-💬 Garo | Khasi | Mizo | Kokborok | Assamese | Bengali | Hindi | English | Nagamese
+💬 Garo | Khasi | Mizo | Kokborok | Assamese | Bengali | Hindi | English | Nagamese | Nepali
 """)
 st.info("👇 Bhasa chuno, phir Type karo ya 🎤 Mic se Bolo!")
 
@@ -56,8 +57,10 @@ def get_reply(text, language):
     if GROQ_AVAILABLE and api_key:
         try:
             client=Groq(api_key=api_key)
+            # FIX: Roman English only
+            prompt = f"You are Northeast AI, creator {CREATOR_NAME} from {CREATOR_PLACE}. IMPORTANT: Write ONLY in Roman English (A-Z). Never use Devanagari, Bengali, Assamese, Nepali script. Transliterate to English letters. User language={language}, reply in {language} but in Roman script. User: {text}"
             comp=client.chat.completions.create(
-                messages=[{"role":"user","content":f"You are Northeast AI, creator {CREATOR_NAME} from {CREATOR_PLACE}. Reply in {language}. User: {text}"}],
+                messages=[{"role":"user","content":prompt}],
                 model="openai/gpt-oss-20b",
                 max_tokens=1000,
                 extra_body={"reasoning_effort": "low"}
@@ -66,11 +69,12 @@ def get_reply(text, language):
             if content and content.strip():
                 return content
             else:
-                raise Exception("Empty response, trying fallback")
+                raise Exception("Empty")
         except Exception as e:
             try:
+                prompt2 = f"Reply in {language} but ONLY Roman English (A-Z letters), no native script. You are Northeast AI by {CREATOR_NAME}. User: {text}"
                 comp=client.chat.completions.create(
-                    messages=[{"role":"user","content":f"You are Northeast AI, creator {CREATOR_NAME} from {CREATOR_PLACE}. Reply in {language}. User: {text}"}],
+                    messages=[{"role":"user","content":prompt2}],
                     model="qwen/qwen3-32b",
                     max_tokens=500)
                 return comp.choices[0].message.content or f"{LANGUAGES[language]}! Hii"
@@ -108,7 +112,6 @@ st.divider()
 st.markdown(f"**{LANGUAGES[lang]}! Type karo ya Mic dabao 🎤**")
 
 voice_input = st.audio_input(f"🎤 {lang} me Bolo")
-
 user_text = None
 if voice_input:
     with st.spinner("Sun raha hu..."):
@@ -120,7 +123,6 @@ if voice_input:
             user_text = f"Voice message in {lang}"
 
 text_input = st.chat_input(f"{LANGUAGES[lang]}! Yahan likho...")
-
 if text_input:
     user_text = text_input
 
@@ -128,7 +130,6 @@ if user_text:
     st.session_state.messages.append({"role":"user","content":user_text})
     with st.chat_message("user"):
         st.write(user_text)
-
     reply=get_reply(user_text, lang)
     st.session_state.messages.append({"role":"assistant","content":reply})
     with st.chat_message("assistant"):
@@ -139,5 +140,5 @@ if user_text:
                 fp=io.BytesIO()
                 tts.write_to_fp(fp)
                 st.audio(fp.getvalue(), format="audio/mp3", autoplay=True)
-            except Exception as e:
+            except:
                 pass
