@@ -10,15 +10,14 @@ except:
 
 st.set_page_config(page_title="Northeast AI - Meghalaya", page_icon="🏔️", layout="centered")
 
-# --- CODE CUT FIX CSS ---
+# FIXED CSS - Scroll, not wrap (code nahi tutega)
 st.markdown("""
 <style>
-div[data-testid="stCodeBlock"] pre {
-    white-space: pre-wrap!important;
-    word-wrap: break-word!important;
+div[data-testid="stCodeBlock"] {
+    overflow-x: auto!important;
 }
-code {
-    white-space: pre-wrap!important;
+div[data-testid="stCodeBlock"] pre {
+    white-space: pre!important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -76,7 +75,8 @@ def get_reply(text, language):
     if GROQ_AVAILABLE and api_key.startswith("gsk_") and len(api_key) > 20:
         try:
             client = Groq(api_key=api_key)
-            system_prompt = f"You are Northeast AI by Samewan from Meghalaya. User language is {language}. Reply in simple Roman. If {language} is Mizo, Khasi, Garo, Kokborok and you are not fluent, reply in simple Hindi+English mix but never repeat same phrase like a chhuak a or hriatna. If user asks for code, give SHORT variable names like a,b,op and keep lines <40 chars. Use ```python block."
+            # FIXED PROMPT - clean multiline code
+            system_prompt = f"You are Northeast AI by Samewan from Meghalaya. User language is {language}. Never repeat words like hriatna, chhuak a. For Python code, give SIMPLE CLEAN multiline code. Use small example: a = float(input('Num1: ')) newline b = float(input('Num2: ')) newline if op == '+': print(a+b) etc. No one-line ternary like a/b if b else. Always in ```python block."
             for model_name in ["meta-llama/llama-4-scout-17b-16e-instruct", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.1-8b-instant"]:
                 try:
                     comp = client.chat.completions.create(
@@ -86,7 +86,7 @@ def get_reply(text, language):
                         ],
                         model=model_name,
                         max_tokens=1200,
-                        temperature=0.5,
+                        temperature=0.4,
                         frequency_penalty=1.8,
                         presence_penalty=0.8
                     )
@@ -129,9 +129,7 @@ def speak_clear(text):
         return None
 
 def render_message(content):
-    # Simple and stable
     if "```" in content:
-        # text + code alag
         text_part = re.sub(r"```.*?```", "", content, flags=re.DOTALL).strip()
         if text_part:
             st.write(text_part)
