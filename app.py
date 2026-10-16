@@ -44,10 +44,8 @@ with col2:
         st.rerun()
 
 def get_api_key():
-    # Secrets se try, nahi mila to direct key
+    # Sirf Secrets se lega - safe hai
     k = st.secrets.get("GROQ_API_KEY","") if hasattr(st, 'secrets') else ""
-    if not k:
-        k = "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"
     return k.strip()
 
 def get_reply(text, language):
@@ -61,7 +59,7 @@ def get_reply(text, language):
             client=Groq(api_key=api_key)
             comp=client.chat.completions.create(
                 messages=[{"role":"user","content":f"You are Northeast AI, creator {CREATOR_NAME} from {CREATOR_PLACE}. Reply in {language}. User: {text}"}],
-                model="llama-3.1-8b-instant", max_tokens=300)
+                model="llama-3.3-70b-versatile", max_tokens=300)
             return comp.choices[0].message.content
         except Exception as e:
             return f"Groq Error: {e}"
