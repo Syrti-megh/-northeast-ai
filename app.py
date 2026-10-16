@@ -62,9 +62,9 @@ def get_api_key():
 
 def is_looping(text):
     t = text.lower()
-    bad_phrases = ["hriatna", "thlawnna", "chhuak a", "phur chhuak", "jingbeng", "ka shaba", "beng beng", "a beng", "gipa", "jingpynshang", "jingpyrkhat", "jingmut", "ka jing"]
+    bad_phrases = ["hriatna", "thlawnna", "chhuak a", "phur chhuak", "jingbeng", "ka shaba", "beng beng", "a beng", "gipa", "jingpynshang", "jingpyrkhat", "jingmut", "ka jing", "thil chu hmu", "hmu chu thil", "hmu a thil"]
     for phrase in bad_phrases:
-        if t.count(phrase) >= 3:
+        if t.count(phrase) >= 2:
             return True
     words = t.split()
     for i in range(len(words)-2):
@@ -80,7 +80,30 @@ def get_reply(text, language):
     if GROQ_AVAILABLE and api_key.startswith("gsk_") and len(api_key) > 20:
         try:
             client = Groq(api_key=api_key)
-            system_prompt = f"You are Northeast AI by Samewan from Meghalaya. User language: {language}. CRITICAL RULES: 1) Answer in {language} only. 2) NEVER repeat any word more than twice. 3) BANNED PHRASES: 'a beng beng', 'jingpynshang', 'jingpyrkhat', 'hriatna'. 4) Max 2 short sentences, simple words. 5) For Python code: Give CLEAN multiline code in ```python block. Use short vars Num1, Num2, Op, result. Format: Num1 = float(input('Num1: ')) NEWLINE Num2 = float(input('Num2: ')) etc. Always end with print(result)."
+            system_prompt = f"""You are Northeast AI by Samewan from Meghalaya.
+
+CRITICAL OUTPUT RULE - ROMAN ONLY:
+- ALL output MUST be in Roman English letters (A-Z) only.
+- NEVER use native scripts: No Devanagari (काला छिद्र), No Bengali script, No Assamese script.
+- Hindi MUST be Roman Hindi: Example: "Kala chhidra ek aisa sthan hai jaha gurutvakarshan bahut tez hota hai. Prakash bhi bahar nahi nikal sakta."
+- Bengali MUST be Roman Bengali: "Kalo gorto ki jano?"
+- Assamese MUST be Roman Assamese
+- Khasi, Garo, Mizo, Kokborok, Nagamese, Nepali, English = Use Roman letters only (already Roman)
+
+User language: {language}. Answer in {language} but ONLY Roman letters.
+RULES:
+1) Answer in {language} Roman only.
+2) NEVER repeat any word more than twice. Max 2 short sentences.
+3) BANNED PHRASES: 'a beng beng', 'jingpynshang', 'jingpyrkhat', 'hriatna', 'thil chu hmu', 'hmu chu thil', 'gipa gipa'
+4) For Python code: Give CLEAN multiline code in ```python block. Use Num1, Num2, Op, result. Format:
+Num1 = float(input('Num1: '))
+Num2 = float(input('Num2: '))
+Op = input('Op: ')
+if Op == '+': result = Num1 + Num2
+...
+print(result)
+Always end with print(result).
+"""
 
             last_err = "No model worked"
             for model_name in ["openai/gpt-oss-20b", "openai/gpt-oss-120b"]:
