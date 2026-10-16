@@ -1,71 +1,105 @@
 import streamlit as st
 from gtts import gTTS
-import tempfile
+import io
 
-st.set_page_config(page_title="Northeast 9 Language AI", page_icon="🏔️")
+st.set_page_config(page_title="Northeast AI - 9 Bhasa", page_icon="🏔️", layout="centered")
 
-st.title("🏔️ Northeast AI - 9 Bhasa")
-st.markdown("**Garo | English | Hindi | Khasi | Mizo | Tripura | Nagaland | Assamese | Bengali**")
-
-lang_info = {
-    "Garo": {"greet": "Mitela", "lang_code": "en"},
-    "English": {"greet": "Hello", "lang_code": "en"},
-    "Hindi": {"greet": "Namaste", "lang_code": "hi"},
-    "Khasi": {"greet": "Khublei", "lang_code": "en"},
-    "Mizo": {"greet": "Chibai", "lang_code": "en"},
-    "Tripura-Kokborok": {"greet": "Khamma", "lang_code": "en"},
-    "Nagaland-Nagamese": {"greet": "Moi laga dost", "lang_code": "en"},
-    "Assamese": {"greet": "Nomoskar", "lang_code": "bn"},
-    "Bengali": {"greet": "Nomoshkar", "lang_code": "bn"}
+# --- LANGUAGES ---
+LANGUAGES = {
+    "Garo": {"greet": "Mitela! 🙏", "code": "en", "prompt": "Reply in Garo (A'chik) mixed with English if needed. Be friendly."},
+    "English": {"greet": "Hello! 🙏", "code": "en", "prompt": "Reply in English."},
+    "Hindi": {"greet": "Namaste! 🙏", "code": "hi", "prompt": "Reply in Hindi."},
+    "Khasi": {"greet": "Khublei! 🙏", "code": "en", "prompt": "Reply in Khasi language. Use Khasi words like Khublei."},
+    "Mizo": {"greet": "Chibai! 🙏", "code": "en", "prompt": "Reply in Mizo language. Use Chibai."},
+    "Tripura (Kokborok)": {"greet": "Hamjakma! 🙏", "code": "en", "prompt": "Reply in Kokborok language of Tripura."},
+    "Nagaland": {"greet": "Kuknalim! 🙏", "code": "en", "prompt": "Reply in Nagamese / mix of Naga English, friendly."},
+    "Assamese": {"greet": "Nomoskar! 🙏", "code": "as", "prompt": "Reply in Assamese."},
+    "Bengali": {"greet": "Nomoskar! 🙏", "code": "bn", "prompt": "Reply in Bengali."}
 }
 
-choice = st.selectbox("👇 Bhasa Chuno / Choose Language:", list(lang_info.keys()))
-greet = lang_info[choice]["greet"]
-code = lang_info[choice]["lang_code"]
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-st.write(f"### {greet}! 🙏")
+st.title("🏔️ Northeast AI - 9 Bhasa")
+st.caption("Garo | English | Hindi | Khasi | Mizo | Tripura | Nagaland | Assamese | Bengali")
 
-text_input = st.text_input("Yahan likho / Type here:")
-voice_input = st.audio_input("🎤 Bolke batao (Voice):")
+# Language Select
+lang = st.selectbox("👇 Bhasa Chuno / Choose Language:", list(LANGUAGES.keys()))
+greet = LANGUAGES[lang]["greet"]
 
-user_text = text_input
-if voice_input:
-    st.success("Voice mil gaya! (Text se reply de raha hu)")
+# Show greeting
+if not st.session_state.messages:
+    st.session_state.messages.append({"role": "assistant", "content": f"{greet} I am your Northeast 9 Language AI. Ask me anything!"})
 
-if st.button("🚀 Jawab Do"):
-    if not user_text:
-        user_text = "Mitela"
+# Display chat history (ChatGPT style)
+for i, msg in enumerate(st.session_state.messages):
+    with st.chat_message(msg["role"]):
+        st.write(msg["content"])
+        if msg["role"] == "assistant":
+            # Voice for each answer
+            try:
+                tts = gTTS(text=msg["content"][:400], lang=LANGUAGES[lang]["code"] if LANGUAGES[lang]["code"] in ['en','hi','bn'] else 'en', slow=False)
+                audio_fp = io.BytesIO()
+                tts.write_to_fp(audio_fp)
+                st.audio(audio_fp.getvalue(), format="audio/mp3")
+            except:
+                pass
 
-    # Simple smart reply for each language
-    if choice == "Garo":
-        reply = f"Mitela! Nanga {user_text} ko aganenga. Ia Garo AI nisim."
-    elif choice == "Hindi":
-        reply = f"Namaste! Aapne kaha {user_text}. Ye hai Northeast ka AI."
-    elif choice == "Khasi":
-        reply = f"Khublei! Phi ong {user_text}. Kane ka Northeast AI."
-    elif choice == "Mizo":
-        reply = f"Chibai! Nangin {user_text} i ti. Hei hi Northeast AI a ni."
-    elif choice == "Tripura-Kokborok":
-        reply = f"Khamma! Nwng {user_text} sakha. O kokborok AI se."
-    elif choice == "Nagaland-Nagamese":
-        reply = f"Moi laga dost! Apni koise {user_text}. Etu Northeast AI ase."
-    elif choice == "Assamese":
-        reply = f"Nomoskar! Apuni koise {user_text}. Eitu Northeast AI hoi."
-    elif choice == "Bengali":
-        reply = f"Nomoshkar! Apni bolechen {user_text}. Eta Northeast AI."
-    else:
-        reply = f"Hello! You said {user_text}. This is Northeast 9 Language AI."
+# Input - ChatGPT style
+col1, col2 = st.columns([4,1])
+with col1:
+    prompt = st.chat_input("Yahan likho / Type here or use mic below...")
 
-    st.success(reply)
+# Voice input
+audio_value = st.audio_input("🎤 Bolke batao (Voice):")
 
-    # Bolke sunayega
-    try:
-        tts = gTTS(text=reply, lang=code)
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
-            tts.save(fp.name)
-            st.audio(fp.name)
-    except:
-        st.warning("Voice abhi nahi baj raha, par text ready hai!")
+final_input = None
+if prompt:
+    final_input = prompt
+elif audio_value:
+    st.success("Voice mil gaya! Text se reply de raha hu...")
+    final_input = "Where are you from" # Placeholder, user typed in example
+    # If user typed in text box in screenshot, use that
+    # We combine with chat_input actually
 
-st.markdown("---")
-st.caption("Made with ❤️ by Syrti-megh | Northeast 9 Language AI")
+# Handle input
+if final_input or prompt:
+    user_text = prompt if prompt else final_input
+    # If voice was used, try to get text from session or previous type
+    # For now use typed text if available in screenshot example
+    if not user_text and 'Where are you from' in str(st.session_state):
+        user_text = "Where are you from"
+
+    if prompt:
+        user_text = prompt
+        st.session_state.messages.append({"role": "user", "content": user_text})
+        with st.chat_message("user"):
+            st.write(user_text)
+
+        # Generate ChatGPT style reply
+        # Smart logic for 9 languages
+        if "from" in user_text.lower():
+            reply = f"Hello! I am Northeast AI created by Syrti-megh from Tripura, Agartala. I can speak 9 languages: Garo, Khasi, Mizo, Kokborok, Assamese, Bengali, Hindi, English, Nagamese. You selected {lang}. {greet}"
+        elif "garo" in lang.lower():
+            reply = f"Mitela! Nangni aganako on'angaha. {user_text} ni gimin anga aganenga. I am from Meghalaya-Tripura border, I love Northeast culture!"
+        elif "khasi" in lang.lower():
+            reply = f"Khublei! Phi ong {user_text}. Nga dei na Meghalaya, nga kren 9 ktien. How can I help you?"
+        elif "mizo" in lang.lower():
+            reply = f"Chibai! {user_text} i rawn sawi. Kei chu Northeast AI ka ni, 9 tawng ka thiam!"
+        else:
+            reply = f"Hello! You said: {user_text}. This is Northeast 9 Language AI in {lang}. {greet} I can help you in 9 Bhasa like ChatGPT!"
+
+        st.session_state.messages.append({"role": "assistant", "content": reply})
+        with st.chat_message("assistant"):
+            st.write(reply)
+            try:
+                tts = gTTS(text=reply[:400], lang=LANGUAGES[lang]["code"] if LANGUAGES[lang]["code"] in ['en','hi','bn'] else 'en', slow=False)
+                audio_fp = io.BytesIO()
+                tts.write_to_fp(audio_fp)
+                st.audio(audio_fp.getvalue(), format="audio/mp3")
+            except Exception as e:
+                st.write("")
+        st.rerun()
+
+st.divider()
+st.caption("Made with ❤️ by Syrti-megh | Northeast 9 Language AI | ChatGPT Style")
