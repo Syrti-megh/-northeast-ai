@@ -37,7 +37,6 @@ with col2:
         st.session_state.messages = [{"role": "assistant", "content": get_welcome_text(lang)}]
         st.rerun()
 
-# --- FIXED - 3 line ko 1 line banayega ---
 def get_api_key():
     raw = ""
     try:
@@ -50,27 +49,18 @@ def get_api_key():
         pass
     if not raw:
         raw = os.getenv("GROQ_API_KEY","")
-    # Saare Enter, Space, Quotes hatao
     clean = "".join(raw.split())
     clean = clean.replace('"','').replace("'","")
     return clean
 
 def get_reply(text, language):
-    low = text.lower().strip()
     api_key = get_api_key()
 
-    # Sidebar me status
-    with st.sidebar:
-        if api_key.startswith("gsk_"):
-            st.success(f"✅ Key OK: len {len(api_key)}")
-        else:
-            st.error(f"❌ Key FAIL len {len(api_key)}")
-
-    # Groq - Sabse pehle try karo (CM wala block hata diya)
     if GROQ_AVAILABLE and api_key.startswith("gsk_") and len(api_key) > 20:
         try:
             client = Groq(api_key=api_key)
-            for model_name in ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "gemma2-9b-it"]:
+            # ONLY NEW MODELS - gemma REMOVED
+            for model_name in ["llama-3.1-8b-instant", "llama-3.3-70b-versatile"]:
                 try:
                     comp = client.chat.completions.create(
                         messages=[
@@ -87,14 +77,11 @@ def get_reply(text, language):
                 except Exception as e:
                     last_err = str(e)
                     continue
-            return f"Groq Error: {last_err[:200]}"
+            return f"Groq Error: {last_err[:300]}"
         except Exception as e:
-            return f"Groq Connect Error: {str(e)[:200]}"
+            return f"Connect Error: {str(e)[:300]}"
 
-    # Fallback - sirf tab jab key hi nahi
-    if "chief minister" in low and "meghalaya" in low:
-        return "CM of Meghalaya is Conrad K. Sangma! 🏔️"
-    return f"⚠️ API Key missing/invalid (len {len(api_key)}). Secrets me naya gsk_ key lagao! 🏔️"
+    return f"⚠️ API Key missing len {len(api_key)}"
 
 def transcribe_voice(audio_file):
     api_key = get_api_key()
