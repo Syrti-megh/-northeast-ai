@@ -10,6 +10,19 @@ except:
 
 st.set_page_config(page_title="Northeast AI - Meghalaya", page_icon="🏔️", layout="centered")
 
+# --- CODE CUT FIX CSS ---
+st.markdown("""
+<style>
+div[data-testid="stCodeBlock"] pre {
+    white-space: pre-wrap!important;
+    word-wrap: break-word!important;
+}
+code {
+    white-space: pre-wrap!important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 CREATOR_NAME = "Samewan"
 CREATOR_PLACE = "Meghalaya"
 
@@ -50,18 +63,12 @@ def get_api_key():
 
 def is_looping(text):
     t = text.lower()
-    if t.count("hriatna") > 3:
-        return True
-    if t.count("thlawnna") > 3:
-        return True
-    if t.count("chhuak a") > 3:
-        return True
-    if t.count("phur chhuak") > 2:
-        return True
-    if t.count("jingbeng") > 3:
-        return True
-    if t.count("ka shaba") > 4:
-        return True
+    if t.count("hriatna") > 3: return True
+    if t.count("thlawnna") > 3: return True
+    if t.count("chhuak a") > 3: return True
+    if t.count("phur chhuak") > 2: return True
+    if t.count("jingbeng") > 3: return True
+    if t.count("ka shaba") > 4: return True
     return False
 
 def get_reply(text, language):
@@ -69,7 +76,7 @@ def get_reply(text, language):
     if GROQ_AVAILABLE and api_key.startswith("gsk_") and len(api_key) > 20:
         try:
             client = Groq(api_key=api_key)
-            system_prompt = "You are Northeast AI by Samewan from Meghalaya. User language is " + language + ". Reply in simple Roman. If " + language + " is Mizo, Khasi, Garo, Kokborok and you are not fluent, reply in simple Hindi + English mix but never repeat same phrase like a chhuak a or jingbeng or hriatna. If user asks for code, give code in proper python markdown block ```python... ```. Max 10 lines explanation."
+            system_prompt = f"You are Northeast AI by Samewan from Meghalaya. User language is {language}. Reply in simple Roman. If {language} is Mizo, Khasi, Garo, Kokborok and you are not fluent, reply in simple Hindi+English mix but never repeat same phrase like a chhuak a or hriatna. If user asks for code, give SHORT variable names like a,b,op and keep lines <40 chars. Use ```python block."
             for model_name in ["meta-llama/llama-4-scout-17b-16e-instruct", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.1-8b-instant"]:
                 try:
                     comp = client.chat.completions.create(
@@ -112,7 +119,6 @@ def transcribe_voice(audio_file):
 
 def speak_clear(text):
     try:
-        # code hata ke voice
         clean = re.sub(r"```.*?```", " ", text, flags=re.DOTALL)
         clean = clean[:400]
         tts = gTTS(text=clean, lang='en', tld='co.in', slow=False)
@@ -123,51 +129,15 @@ def speak_clear(text):
         return None
 
 def render_message(content):
-    # Code block hai to alag render
+    # Simple and stable
     if "```" in content:
-        parts = re.split(r"```(?:python)?", content)
-        for i, part in enumerate(parts):
-            if "```" in part:
-                code_part, rest = part.split("```", 1)
-                st.code(code_part.strip(), language="python")
-                if rest.strip():
-                    st.write(rest.strip())
-            else:
-                if i == 0:
-                    if part.strip():
-                        st.write(part.strip())
-                else:
-                    # pehla part code tha
-                    if "```" not in content.split("```")[i-1]:
-                        st.code(part.split("```")[0].strip(), language="python")
-                    else:
-                        st.write(part.strip())
-        # simple fallback
-        if not re.search(r"```", content) or content.count("```") < 2:
-             # manual
-            codes = re.findall(r"```(?:python)?(.*?)```", content, re.DOTALL)
-            if codes:
-                text_only = re.sub(r"```(?:python)?(.*?)```", "", content, flags=re.DOTALL).strip()
-                if text_only:
-                    st.write(text_only)
-                for c in codes:
-                    st.code(c.strip(), language="python")
-            else:
-                st.write(content)
-    elif "input(" in content and "print(" in content:
-        # raw python code without markdown
-        lines = content.split("\n")
-        text_lines = []
-        code_lines = []
-        for line in lines:
-            if "input(" in line or "print(" in line or "float(" in line or "def " in line or "=" in line and "(" in line:
-                code_lines.append(line)
-            else:
-                text_lines.append(line)
-        if text_lines:
-            st.write("\n".join(text_lines))
-        if code_lines:
-            st.code("\n".join(code_lines), language="python")
+        # text + code alag
+        text_part = re.sub(r"```.*?```", "", content, flags=re.DOTALL).strip()
+        if text_part:
+            st.write(text_part)
+        codes = re.findall(r"```(?:python)?(.*?)```", content, re.DOTALL)
+        for c in codes:
+            st.code(c.strip(), language="python")
     else:
         st.write(content)
 
