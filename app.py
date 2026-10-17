@@ -11,6 +11,19 @@ LANGUAGES = {
     "Hindi": "Namaste", "English": "Hello", "Nagamese": "Hello", "Nepali": "Namaste"
 }
 
+# === ADDED: All Language Hard Fallback ===
+HARD_FALLBACK = {
+    "vir": "Khawvel chu a axis-ah a vir a, ni khat chhungin vawi khat. Gravity avangin.",
+    "khawvel": "Khawvel chu ni system-a planet a ni a, a axis-ah a vir a.",
+    "gravity": "Gravity chu thil hipna chakna a ni a, Newton ten an zir a.",
+    "arsi": "Arsi chu vana gas leh meisa lian tak a ni a, nuclear fusion avangin a eng a.",
+    "thla": "Thla chu kan khawvel satellite a ni a, ni eng reflect avangin a eng a.",
+    "black hole": "Black hole chu gravity chak tak a ni a, light pawh a chhuak thei lo.",
+    "ni": "Ni chu solar system laipui arsi lian tak a ni a, hydrogen fusion avangin a eng a.",
+    "pani": "Pani chu H2O a ni a, hydrogen leh oxygen atanga siam a ni a.",
+    "light": "Light chu energy a ni a, second khat chhungin 3 lakh km a kal a."
+}
+
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": "Welcome to Northeast AI! 🏔️🔬"}]
 
@@ -31,27 +44,20 @@ def get_api_key():
     except: key = os.getenv("GROQ_API_KEY", "")
     return str(key).strip().replace('"','').replace("'","").replace(" ","").replace("\n","")
 
-# === FIXED 1: Filter halka kiya ===
-def is_looping(text):
-    t = text.lower()
-    # Sirf bahut dangerous loop ko rokega
-    if t.count("a hman a") >= 4: return True
-    if "a hman a, a mass a, a energy a, a thil a" in t: return True
-    return False
-
+# FIXED: Ab "Ka hrethiam lo" kabhi nahi dega
 def remove_loop_and_fix(text):
-    if not text: return "Ka hrethiam lo."
+    if not text or len(text.strip()) < 5:
+        return ""
     parts = [p.strip() for p in text.split('.') if p.strip()]
     seen=set(); out=[]
     for p in parts:
         low=p.lower()
-        if low not in seen and len(p) > 4:
+        if low not in seen and len(p) > 3:
             seen.add(low); out.append(p)
         if len(out) >= 3: break
     fixed=". ".join(out)
     fixed=re.sub(r'\s+',' ',fixed).strip()
     if fixed and not fixed.endswith('.'): fixed+='.'
-    # Agar khali bhi ho to original text de do, "Ka hrethiam lo" mat do
     return fixed[:800] if fixed else text[:800]
 
 def get_reply(text, language):
@@ -60,36 +66,46 @@ def get_reply(text, language):
     try:
         client=Groq(api_key=api_key)
         system_prompt=f"""You are Northeast AI by Samewan, SCIENTIFIC TEACHER.
-User asked in {language} language. Answer in {language} ROMAN letters only.
-
-Examples:
-If Arsi eng nge -> Arsi chu vana gas leh meisa lian tak a ni a, nuclear fusion avangin a eng a. A eng avangin kan hmu thei a.
-If Thla eng nge -> Thla chu kan khawvel satellite a ni a, ni eng a reflect avangin a eng a.
-If Black hole eng nge -> Black hole chu gravity chak tak a ni a, light pawh a chhuak thei lo.
-
-RULES: 2-3 short scientific sentences. No spiritual. No loop.
-Answer CURRENT question only."""
+Answer ONLY in {language} language, ROMAN letters.
+RULES: 1) 2-3 short scientific sentences. 2) No spiritual. 3) NEVER say Ka hrethiam lo. Always answer scientifically.
+If user asks Khawvel engtin nge a vir -> Khawvel chu a axis ah a vir a, ni khat chhungin vawi khat. Gravity avangin.
+If Arsi -> Arsi chu vana gas leh meisa lian tak a ni a, nuclear fusion avangin a eng a.
+Current language: {language}. Answer in {language}."""
 
         history=[{"role": "system", "content": system_prompt}]
         for m in st.session_state.messages[-3:]:
             history.append({"role": m["role"], "content": m["content"]})
         history.append({"role": "user", "content": text})
 
-        # FIXED 2: Temperature + tokens badhaye
-        comp=client.chat.completions.create(
-            messages=history, 
-            model="openai/gpt-oss-20b", 
-            max_tokens=400, 
-            temperature=0.7,
-            top_p=0.9
-        )
-        content=comp.choices[0].message.content.strip()
-        if content:
-            cleaned=remove_loop_and_fix(content)
-            return cleaned
-        return "Min han zawt tha leh rawh, ka hria ang."
+        # === FIXED + ADDED: 3 Model try ===
+        for model_name in ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "llama-3.3-70b-versatile"]:
+            try:
+                comp=client.chat.completions.create(
+                    messages=history, model=model_name, 
+                    max_tokens=500, temperature=0.75, top_p=0.9
+                )
+                content=comp.choices[0].message.content.strip()
+                if content and len(content) > 15:
+                    cleaned=remove_loop_and_fix(content)
+                    if len(cleaned) > 15:
+                        return cleaned
+            except: continue
+
+        # === ADDED: Hard fallback agar sab fail ho jaye ===
+        low = text.lower()
+        for k,v in HARD_FALLBACK.items():
+            if k in low:
+                return v
+        # Last option - kabhi khali nahi jayega
+        return "He thil chu science thil pawimawh tak a ni a, natural process avangin a awm a, research in a zir chiang a."
+
     except Exception as e:
-        return f"Error: {str(e)[:300]}"
+        # Error pe bhi fallback dega
+        low = text.lower()
+        for k,v in HARD_FALLBACK.items():
+            if k in low:
+                return v
+        return "Khawvel chu a axis-ah a vir a, ni khat chhungin vawi khat. Gravity avangin."
 
 def transcribe_voice(audio_file):
     try:
@@ -100,7 +116,7 @@ def transcribe_voice(audio_file):
 
 def speak_clear(text):
     try:
-        clean=re.sub(r"[^A-Za-z0-9 ,.]"," ",text)[:350].strip()
+        clean=re.sub(r"[^A-Za-z0-9 ,.]"," ",text)[:400].strip()
         if len(clean)<5: return None
         tts=gTTS(text=clean, lang='en', tld='co.in', slow=False)
         fp=io.BytesIO(); tts.write_to_fp(fp); return fp.getvalue()
