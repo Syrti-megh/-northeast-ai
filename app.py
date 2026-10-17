@@ -11,16 +11,9 @@ except:
 st.set_page_config(page_title="Northeast AI - Meghalaya", page_icon="🏔️", layout="centered")
 
 LANGUAGES = {
-    "Garo": "Mitela",
-    "Khasi": "Khublei",
-    "Mizo": "Chibai",
-    "Kokborok": "Hamjakma",
-    "Assamese": "Nomoskar",
-    "Bengali": "Nomoskar",
-    "Hindi": "Namaste",
-    "English": "Hello",
-    "Nagamese": "Hello",
-    "Nepali": "Namaste"
+    "Garo": "Mitela", "Khasi": "Khublei", "Mizo": "Chibai",
+    "Kokborok": "Hamjakma", "Assamese": "Nomoskar", "Bengali": "Nomoskar",
+    "Hindi": "Namaste", "English": "Hello", "Nagamese": "Hello", "Nepali": "Namaste"
 }
 
 if "messages" not in st.session_state:
@@ -49,25 +42,22 @@ def get_api_key():
         pass
     if not raw:
         raw = os.getenv("GROQ_API_KEY", "")
-    clean = "".join(raw.split()).replace('"', "").replace("'", "")
-    return clean
+    return "".join(raw.split()).replace('"', "").replace("'", "")
 
 def is_looping(text):
     t = text.lower()
-    bad = ["thil chu hmu", "hmu chu thil", "thil hmu chu", "beng beng", "jingpynshang", "ka jing"]
-    for b in bad:
-        if t.count(b) >= 2:
+    for phrase in ["thil chu hmu", "hmu chu thil", "thil hmu chu", "beng beng", "jingpynshang"]:
+        if t.count(phrase) >= 2:
             return True
     words = t.split()
     for i in range(len(words)-2):
-        if words[i] == words[i+1] == words[i+2]:
+        if words[i]==words[i+1]==words[i+2]:
             return True
     return False
 
 def remove_loop_and_fix(text):
     parts = text.split('.')
-    seen = []
-    out = []
+    seen, out = [], []
     for p in parts:
         s = p.strip().lower()
         if not s or len(s) < 3:
@@ -85,23 +75,13 @@ def get_reply(text, language):
     if GROQ_AVAILABLE and api_key.startswith("gsk_") and len(api_key) > 20:
         try:
             client = Groq(api_key=api_key)
-            system_prompt = (
-                "You are Northeast AI by Samewan from Meghalaya. "
-                "CRITICAL: ALL output MUST be Roman English letters only. "
-                "No Devanagari, No Bengali script. "
-                "Hindi example: Kala chhidra ek aisa sthan hai jaha gurutvakarshan bahut tez hota hai. "
-                "User language: " + language + ". Answer in " + language + " Roman only. "
-                "MAX 2-3 short sentences. NEVER repeat words. "
-                "Mizo GOOD: Black hole chu vana thil chak tak a ni a, engkim a hip lut a."
-            )
-            last_err = "No model worked"
-            for model_name in ["llama-3.3-70b-versatile", "openai/gpt-oss-20b", "openai/gpt-oss-120b"]:
+            system_prompt = f"You are Northeast AI by Samewan from Meghalaya. CRITICAL: ALL output MUST be Roman letters only. No native scripts. Hindi example: Kala chhidra ek aisa sthan hai jaha gurutvakarshan bahut tez hota hai. User language: {language}. Answer in {language} Roman only. MAX 2-3 sentences. NEVER repeat words. BANNED: thil chu hmu, hmu chu thil. Mizo GOOD: Black hole chu vana thil chak tak a ni a, engkim a hip lut a."
+            last_err = ""
+            # ONLY WORKING MODELS - NO LLAMA
+            for model_name in ["openai/gpt-oss-20b", "openai/gpt-oss-120b"]:
                 try:
                     comp = client.chat.completions.create(
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": text}
-                        ],
+                        messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": text}],
                         model=model_name,
                         max_tokens=250,
                         temperature=0.65,
@@ -117,9 +97,9 @@ def get_reply(text, language):
                 except Exception as e:
                     last_err = str(e)
                     continue
-            return "Groq Error: " + last_err[:400]
+            return f"Groq Error: {last_err[:300]} - Try again, model list updated to gpt-oss only"
         except Exception as e:
-            return "Connect Error: " + str(e)[:300]
+            return f"Connect Error: {str(e)[:300]}"
     return "API Key missing"
 
 def transcribe_voice(audio_file):
@@ -127,10 +107,7 @@ def transcribe_voice(audio_file):
     if GROQ_AVAILABLE and api_key and audio_file:
         try:
             client = Groq(api_key=api_key)
-            tr = client.audio.transcriptions.create(
-                file=("voice.wav", audio_file.getvalue()),
-                model="whisper-large-v3"
-            )
+            tr = client.audio.transcriptions.create(file=("voice.wav", audio_file.getvalue()), model="whisper-large-v3")
             return tr.text
         except:
             return None
@@ -139,15 +116,14 @@ def transcribe_voice(audio_file):
 def speak_clear(text):
     try:
         clean = re.sub(r"```.*?```", " ", text, flags=re.DOTALL)
-        clean = re.sub(r"[^A-Za-z0-9 ,.]", " ", clean)
-        clean = clean[:350].strip()
+        clean = re.sub(r"[^A-Za-z0-9 ,.]", " ", clean)[:350].strip()
         if len(clean) < 5:
             return None
         tts = gTTS(text=clean, lang='en', tld='co.in', slow=False)
         fp = io.BytesIO()
         tts.write_to_fp(fp)
         return fp.getvalue()
-    except Exception:
+    except:
         return None
 
 def render_message(content):
