@@ -59,16 +59,13 @@ def get_api_key():
 
 def is_looping(text):
     t = text.lower()
-    bad_phrases = ["hriatna", "thlawnna", "chhuak a", "phur chhuak", "jingbeng", "ka shaba", "beng beng", "a beng", "gipa", "jingpynshang", "jingpyrkhat", "jingmut", "ka jing", "thil chu hmu", "hmu chu thil", "hmu a thil", "thil hmu chu"]
+    bad_phrases = ["thil chu hmu", "hmu chu thil", "thil hmu chu", "hriatna", "jingbeng", "beng beng", "jingpynshang", "ka jing"]
     for phrase in bad_phrases:
         if t.count(phrase) >= 2:
             return True
     words = t.split()
     for i in range(len(words)-2):
         if words[i]==words[i+1]==words[i+2]:
-            return True
-    for i in range(len(words)-5):
-        if words[i]==words[i+2]==words[i+4] and words[i+1]==words[i+3]==words[i+5]:
             return True
     return False
 
@@ -77,11 +74,11 @@ def remove_loop_and_fix(text):
     seen = []
     out = []
     for s in sentences:
-        s_clean = s.strip().lower()
-        if not s_clean or len(s_clean) < 3:
+        sc = s.strip().lower()
+        if not sc or len(sc) < 3:
             continue
-        if s_clean not in seen:
-            seen.append(s_clean)
+        if sc not in seen:
+            seen.append(sc)
             out.append(s.strip())
     fixed = ". ".join(out)
     if fixed and not fixed.endswith('.'):
@@ -97,23 +94,23 @@ def get_reply(text, language):
 
 CRITICAL OUTPUT RULE - ROMAN ONLY:
 - ALL output MUST be in Roman English letters (A-Z) only.
-- NEVER use native scripts: No Devanagari, No Bengali script, No Assamese script.
-- Hindi example: "Kala chhidra ek aisa sthan hai jaha gurutvakarshan bahut tez hota hai. Prakash bhi bahar nahi nikal sakta."
-- Bengali Roman: "Kalo gorto mohakashe emon ek jayga jekhane madhyakorshon eto beshi je alo o berote pare na."
+- NEVER use native scripts.
+- Hindi example: Kala chhidra ek aisa sthan hai jaha gurutvakarshan bahut tez hota hai.
+- Bengali Roman: Kalo gorto mohakashe emon ek jayga jekhane madhyakorshon eto beshi je alo o berote pare na.
 
-User language: {language}. Answer in {language} but ONLY Roman letters.
+User language: {language}. Answer in {language} Roman only.
 
 STRICT ANTI-LOOP RULES:
 1) MAX 2-3 short sentences only.
 2) NEVER repeat any word more than twice.
-3) BANNED: 'thil chu hmu', 'hmu chu thil', 'a beng beng', 'jingpynshang', 'ka jing'
-4) Mizo GOOD example: "Black hole chu vana thil chak tak a ni a, engkim a hip lut a, eng mah a chhuak thei lo."
-5) If you don't know {language} word, use simple English mix but NO REPETITION.
-6) For Python code: Give CLEAN code in ```python block. Use Num1, Num2, Op, result. End with print(result).
+3) BANNED: thil chu hmu, hmu chu thil, a beng beng, jingpynshang
+4) Mizo GOOD: Black hole chu vana thil chak tak a ni a, engkim a hip lut a, eng mah a chhuak thei lo.
+5) If you dont know {language} word, use simple English mix but NO REPETITION.
+6) For Python code: Give CLEAN code in python block. End with print(result).
 """
 
             last_err = "No model worked"
-            # FIXED MODEL LIST - No more 404
+            # FIXED: Removed 404 model, only working models
             for model_name in ["llama-3.3-70b-versatile", "openai/gpt-oss-20b", "openai/gpt-oss-120b"]:
                 try:
                     comp = client.chat.completions.create(
@@ -132,8 +129,7 @@ STRICT ANTI-LOOP RULES:
                             content = remove_loop_and_fix(content)
                             if is_looping(content):
                                 continue
-                        content = remove_loop_and_fix(content)
-                        return content
+                        return remove_loop_and_fix(content)
                 except Exception as e:
                     last_err = str(e)
                     if "model_not_found" in last_err or "404" in last_err or "does not exist" in last_err:
@@ -147,22 +143,4 @@ STRICT ANTI-LOOP RULES:
 def transcribe_voice(audio_file):
     api_key = get_api_key()
     if GROQ_AVAILABLE and api_key and audio_file:
-        try:
-            client = Groq(api_key=api_key)
-            tr = client.audio.transcriptions.create(
-                file=("voice.wav", audio_file.getvalue()),
-                model="whisper-large-v3"
-            )
-            return tr.text
-        except:
-            return None
-    return None
-
-def speak_clear(text):
-    try:
-        clean = re.sub(r"```.*?```", " ", text, flags=re.DOTALL)
-        clean = re.sub(r"[^\w\s,.]", " ", clean)
-        clean = clean[:350].strip()
-        if len(clean) < 5:
-            return None
-        tts = g
+       
