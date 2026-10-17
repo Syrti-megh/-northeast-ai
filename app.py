@@ -12,10 +12,10 @@ LANGUAGES = {
 }
 
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Garo - Welcome to Northeast AI from Meghalaya! 🏔️"}]
+    st.session_state.messages = [{"role": "assistant", "content": "Welcome to Northeast AI - Scientific Edition from Meghalaya! 🏔️🔬"}]
 
 st.title("🏔️ Northeast AI")
-st.markdown("**🌟 Meghalaya's First 10-Language Voice AI**")
+st.markdown("**🌟 Meghalaya's First 10-Language Scientific Voice AI**")
 
 col1, col2 = st.columns([2, 1])
 with col1:
@@ -31,7 +31,6 @@ def get_api_key():
         key = st.secrets["GROQ_API_KEY"]
     except:
         key = os.getenv("GROQ_API_KEY", "")
-    # Fix: Remove spaces, quotes, newlines
     key = str(key).strip().replace('"','').replace("'","").replace(" ","").replace("\n","")
     return key
 
@@ -59,20 +58,32 @@ def remove_loop_and_fix(text):
     fixed = ". ".join(out)
     if fixed and not fixed.endswith('.'):
         fixed += '.'
-    return fixed[:450]
+    return fixed[:500]
 
 def get_reply(text, language):
     api_key = get_api_key()
-    
-    # Debug info if key missing
     if not api_key.startswith("gsk_"):
-        return f"API Key Error: Secrets me GROQ_API_KEY nahi mila! Key len={len(api_key)} Start={api_key[:4]}. Secrets me gsk_ se start hone wala naya key dalo."
-    
+        return f"API Key Error: Secrets me GROQ_API_KEY nahi mila! Key len={len(api_key)}"
     try:
         client = Groq(api_key=api_key)
-        system_prompt = f"You are Northeast AI by Samewan from Meghalaya. CRITICAL RULE: Answer ONLY in Roman English letters. NEVER use native script. Hindi must be Roman like: Kala chhidra ek aisa sthan hai. Mizo GOOD example: Black hole chu vana thil chak tak a ni a. User language: {language}. Answer in {language} Roman only. MAX 2 sentences. BANNED PHRASES: thil chu hmu, hmu chu thil."
-        
-        last_err = "No error captured"
+        # === SCIENTIFIC UPGRADE FOR ALL LANGUAGES ===
+        system_prompt = f"""You are Northeast AI by Samewan, a SCIENTIFIC TEACHER from Meghalaya.
+YOUR JOB: Give 100% scientific, educational, factual answer.
+
+STRICT RULES:
+1. NEVER use spiritual/religious words like thlarau, atma, soul, bhagwan. Only science.
+2. ALL output MUST be in Roman letters only (English alphabet). No native script.
+3. User language: {language}. You MUST answer in {language} but using Roman letters.
+4. Explain with science terms: gravity, light, energy, space, mass, etc.
+5. MAX 2-3 short scientific sentences.
+
+SCIENTIFIC EXAMPLES:
+- For "Black hole eng nge" in Mizo Roman: Black hole chu vana hmun a ni a, a gravity chak lutuk avangin engkim a hip lut a, eng pawh a chhuak thei lo, eng light pawh.
+- For "black hole kya hai" in Hindi Roman: Kala chhidra aakash me aisa sthan hai jaha gurutvakarshan itna shaktishali hota hai ki prakash bhi bahar nahi nikal pata, iska nirmaan bade tare ke samapt hone par hota hai.
+
+Now give scientific answer in {language} Roman."""
+
+        last_err = "No error"
         for model_name in ["openai/gpt-oss-20b", "openai/gpt-oss-120b"]:
             try:
                 comp = client.chat.completions.create(
@@ -81,8 +92,8 @@ def get_reply(text, language):
                         {"role": "user", "content": text}
                     ],
                     model=model_name,
-                    max_tokens=300,
-                    temperature=0.6,
+                    max_tokens=350,
+                    temperature=0.5,
                     top_p=0.9
                 )
                 content = comp.choices[0].message.content
@@ -90,29 +101,21 @@ def get_reply(text, language):
                     if is_looping(content):
                         content = remove_loop_and_fix(content)
                         if is_looping(content):
-                            last_err = f"Loop detected in {model_name}, trying next"
                             continue
                     return remove_loop_and_fix(content)
-                else:
-                    last_err = f"{model_name} returned empty"
             except Exception as e:
                 last_err = str(e)
                 continue
-        
-        return f"REAL GROQ ERROR: {last_err[:500]}"
-        
+        return f"Groq Error: {last_err[:400]}"
     except Exception as e:
-        return f"Connect Error: {str(e)[:500]}"
+        return f"Error: {str(e)[:400]}"
 
 def transcribe_voice(audio_file):
     api_key = get_api_key()
     if api_key.startswith("gsk_") and audio_file:
         try:
             client = Groq(api_key=api_key)
-            tr = client.audio.transcriptions.create(
-                file=("voice.wav", audio_file.getvalue()), 
-                model="whisper-large-v3"
-            )
+            tr = client.audio.transcriptions.create(file=("voice.wav", audio_file.getvalue()), model="whisper-large-v3")
             return tr.text
         except:
             return None
