@@ -1,12 +1,7 @@
 import streamlit as st
 from gtts import gTTS
 import io, os, re
-
-try:
-    from groq import Groq
-    GROQ_AVAILABLE = True
-except:
-    GROQ_AVAILABLE = False
+from groq import Groq
 
 st.set_page_config(page_title="Northeast AI - Meghalaya", page_icon="🏔️", layout="centered")
 
@@ -31,22 +26,18 @@ with col2:
         st.rerun()
 
 def get_api_key():
-    raw = ""
+    key = ""
     try:
-        if hasattr(st, 'secrets'):
-            for name in ["GROQ_API_KEY", "groq_api_key", "GROQ"]:
-                if name in st.secrets:
-                    raw = str(st.secrets[name])
-                    break
+        key = st.secrets["GROQ_API_KEY"]
     except:
-        pass
-    if not raw:
-        raw = os.getenv("GROQ_API_KEY", "")
-    return "".join(raw.split()).replace('"', "").replace("'", "")
+        key = os.getenv("GROQ_API_KEY", "")
+    # Fix: Remove spaces, quotes, newlines
+    key = str(key).strip().replace('"','').replace("'","").replace(" ","").replace("\n","")
+    return key
 
 def is_looping(text):
     t = text.lower()
-    for phrase in ["thil chu hmu", "hmu chu thil", "thil hmu chu", "beng beng", "jingpynshang"]:
+    for phrase in ["thil chu hmu", "hmu chu thil", "thil hmu chu", "beng beng"]:
         if t.count(phrase) >= 2:
             return True
     words = t.split()
@@ -72,42 +63,56 @@ def remove_loop_and_fix(text):
 
 def get_reply(text, language):
     api_key = get_api_key()
-    if GROQ_AVAILABLE and api_key.startswith("gsk_") and len(api_key) > 20:
-        try:
-            client = Groq(api_key=api_key)
-            system_prompt = f"You are Northeast AI by Samewan from Meghalaya. CRITICAL: ALL output MUST be Roman letters only. No native scripts. Hindi example: Kala chhidra ek aisa sthan hai jaha gurutvakarshan bahut tez hota hai. User language: {language}. Answer in {language} Roman only. MAX 2-3 sentences. NEVER repeat words. BANNED: thil chu hmu, hmu chu thil. Mizo GOOD: Black hole chu vana thil chak tak a ni a, engkim a hip lut a."
-            last_err = ""
-            # ONLY WORKING MODELS - NO LLAMA
-            for model_name in ["openai/gpt-oss-20b", "openai/gpt-oss-120b"]:
-                try:
-                    comp = client.chat.completions.create(
-                        messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": text}],
-                        model=model_name,
-                        max_tokens=250,
-                        temperature=0.65,
-                        top_p=0.9
-                    )
-                    content = comp.choices[0].message.content
-                    if content and content.strip():
+    
+    # Debug info if key missing
+    if not api_key.startswith("gsk_"):
+        return f"API Key Error: Secrets me GROQ_API_KEY nahi mila! Key len={len(api_key)} Start={api_key[:4]}. Secrets me gsk_ se start hone wala naya key dalo."
+    
+    try:
+        client = Groq(api_key=api_key)
+        system_prompt = f"You are Northeast AI by Samewan from Meghalaya. CRITICAL RULE: Answer ONLY in Roman English letters. NEVER use native script. Hindi must be Roman like: Kala chhidra ek aisa sthan hai. Mizo GOOD example: Black hole chu vana thil chak tak a ni a. User language: {language}. Answer in {language} Roman only. MAX 2 sentences. BANNED PHRASES: thil chu hmu, hmu chu thil."
+        
+        last_err = "No error captured"
+        for model_name in ["openai/gpt-oss-20b", "openai/gpt-oss-120b"]:
+            try:
+                comp = client.chat.completions.create(
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": text}
+                    ],
+                    model=model_name,
+                    max_tokens=300,
+                    temperature=0.6,
+                    top_p=0.9
+                )
+                content = comp.choices[0].message.content
+                if content and content.strip():
+                    if is_looping(content):
+                        content = remove_loop_and_fix(content)
                         if is_looping(content):
-                            content = remove_loop_and_fix(content)
-                            if is_looping(content):
-                                continue
-                        return remove_loop_and_fix(content)
-                except Exception as e:
-                    last_err = str(e)
-                    continue
-            return f"Groq Error: {last_err[:300]} - Try again, model list updated to gpt-oss only"
-        except Exception as e:
-            return f"Connect Error: {str(e)[:300]}"
-    return "API Key missing"
+                            last_err = f"Loop detected in {model_name}, trying next"
+                            continue
+                    return remove_loop_and_fix(content)
+                else:
+                    last_err = f"{model_name} returned empty"
+            except Exception as e:
+                last_err = str(e)
+                continue
+        
+        return f"REAL GROQ ERROR: {last_err[:500]}"
+        
+    except Exception as e:
+        return f"Connect Error: {str(e)[:500]}"
 
 def transcribe_voice(audio_file):
     api_key = get_api_key()
-    if GROQ_AVAILABLE and api_key and audio_file:
+    if api_key.startswith("gsk_") and audio_file:
         try:
             client = Groq(api_key=api_key)
-            tr = client.audio.transcriptions.create(file=("voice.wav", audio_file.getvalue()), model="whisper-large-v3")
+            tr = client.audio.transcriptions.create(
+                file=("voice.wav", audio_file.getvalue()), 
+                model="whisper-large-v3"
+            )
             return tr.text
         except:
             return None
