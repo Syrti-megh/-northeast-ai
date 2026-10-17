@@ -22,9 +22,6 @@ div[data-testid="stCodeBlock"] pre {
 </style>
 """, unsafe_allow_html=True)
 
-CREATOR_NAME = "Samewan"
-CREATOR_PLACE = "Meghalaya"
-
 LANGUAGES = {
     "Garo": "Mitela", "Khasi": "Khublei", "Mizo": "Chibai",
     "Kokborok": "Hamjakma", "Assamese": "Nomoskar", "Bengali": "Nomoskar",
@@ -70,20 +67,18 @@ def is_looping(text):
     for i in range(len(words)-2):
         if words[i]==words[i+1]==words[i+2]:
             return True
-    # check repeating 2-word pattern
     for i in range(len(words)-5):
         if words[i]==words[i+2]==words[i+4] and words[i+1]==words[i+3]==words[i+5]:
             return True
     return False
 
 def remove_loop_and_fix(text):
-    # Remove repeated sentences
     sentences = text.split('.')
     seen = []
     out = []
     for s in sentences:
         s_clean = s.strip().lower()
-        if not s_clean:
+        if not s_clean or len(s_clean) < 3:
             continue
         if s_clean not in seen:
             seen.append(s_clean)
@@ -91,39 +86,35 @@ def remove_loop_and_fix(text):
     fixed = ". ".join(out)
     if fixed and not fixed.endswith('.'):
         fixed += '.'
-    return fixed[:400]
+    return fixed[:450]
 
 def get_reply(text, language):
     api_key = get_api_key()
     if GROQ_AVAILABLE and api_key.startswith("gsk_") and len(api_key) > 20:
         try:
             client = Groq(api_key=api_key)
-            system_prompt = f"""You are Northeast AI by Samewan from Meghalaya. Expert in Northeast languages.
+            system_prompt = f"""You are Northeast AI by Samewan from Meghalaya.
 
 CRITICAL OUTPUT RULE - ROMAN ONLY:
 - ALL output MUST be in Roman English letters (A-Z) only.
 - NEVER use native scripts: No Devanagari, No Bengali script, No Assamese script.
 - Hindi example: "Kala chhidra ek aisa sthan hai jaha gurutvakarshan bahut tez hota hai. Prakash bhi bahar nahi nikal sakta."
 - Bengali Roman: "Kalo gorto mohakashe emon ek jayga jekhane madhyakorshon eto beshi je alo o berote pare na."
-- Assamese Roman: "Kola gahbor emon thait jor gurutvakorxon bohut besi."
 
 User language: {language}. Answer in {language} but ONLY Roman letters.
 
 STRICT ANTI-LOOP RULES:
-1) Answer in {language} Roman only, MAX 2-3 short sentences only.
-2) NEVER repeat any word more than twice. If you start repeating, STOP immediately.
-3) BANNED REPEATS: 'thil chu hmu', 'hmu chu thil', 'a beng beng', 'jingpynshang', 'ka jing'
-4) For Mizo: Use simple Mizo. Example GOOD: "Black hole chu vana thil chak tak a ni a, engkim a hip lut a, eng mah a chhuak thei lo."
-5) NEVER do BAD: "Black hole chu thil hmu. Thil hmu chu." -> THIS IS WRONG.
-6) If you don't know {language} word, use simple English mixed but NO REPETITION.
-7) For Python code: Give CLEAN multiline code in ```python block. Use Num1, Num2, Op, result. End with print(result).
-
-Remember: Quality > Quantity. 2 good sentences are enough. DO NOT LOOP.
+1) MAX 2-3 short sentences only.
+2) NEVER repeat any word more than twice.
+3) BANNED: 'thil chu hmu', 'hmu chu thil', 'a beng beng', 'jingpynshang', 'ka jing'
+4) Mizo GOOD example: "Black hole chu vana thil chak tak a ni a, engkim a hip lut a, eng mah a chhuak thei lo."
+5) If you don't know {language} word, use simple English mix but NO REPETITION.
+6) For Python code: Give CLEAN code in ```python block. Use Num1, Num2, Op, result. End with print(result).
 """
 
             last_err = "No model worked"
-            # Use better models for low-resource languages
-            for model_name in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "openai/gpt-oss-20b"]:
+            # FIXED MODEL LIST - No more 404
+            for model_name in ["llama-3.3-70b-versatile", "openai/gpt-oss-20b", "openai/gpt-oss-120b"]:
                 try:
                     comp = client.chat.completions.create(
                         messages=[
@@ -137,7 +128,6 @@ Remember: Quality > Quantity. 2 good sentences are enough. DO NOT LOOP.
                     )
                     content = comp.choices[0].message.content
                     if content and content.strip():
-                        # Auto-fix if looping
                         if is_looping(content):
                             content = remove_loop_and_fix(content)
                             if is_looping(content):
@@ -146,6 +136,8 @@ Remember: Quality > Quantity. 2 good sentences are enough. DO NOT LOOP.
                         return content
                 except Exception as e:
                     last_err = str(e)
+                    if "model_not_found" in last_err or "404" in last_err or "does not exist" in last_err:
+                        continue
                     continue
             return "Groq Error: " + last_err[:400]
         except Exception as e:
@@ -173,54 +165,4 @@ def speak_clear(text):
         clean = clean[:350].strip()
         if len(clean) < 5:
             return None
-        tts = gTTS(text=clean, lang='en', tld='co.in', slow=False)
-        fp = io.BytesIO()
-        tts.write_to_fp(fp)
-        return fp.getvalue()
-    except:
-        return None
-
-def render_message(content):
-    if "```" in content:
-        text_part = re.sub(r"```.*?```", "", content, flags=re.DOTALL).strip()
-        if text_part:
-            st.write(text_part)
-        codes = re.findall(r"```(?:python)?(.*?)```", content, re.DOTALL)
-        for c in codes:
-            code_clean = c.strip()
-            if code_clean.endswith("\n result") or code_clean.endswith("\nresult"):
-                code_clean += " = 'Invalid operator'"
-            st.code(code_clean, language="python")
-    else:
-        st.write(content)
-
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        render_message(msg["content"])
-
-st.divider()
-
-voice_input = st.audio_input("🎤 " + lang + " me Bolo")
-user_text = None
-if voice_input:
-    with st.spinner("Sun raha hu..."):
-        transcribed = transcribe_voice(voice_input)
-        if transcribed:
-            user_text = transcribed
-            st.success("🎤 Suna: " + transcribed)
-
-text_input = st.chat_input(LANGUAGES[lang] + "! Yahan likho...")
-if text_input:
-    user_text = text_input
-
-if user_text:
-    st.session_state.messages.append({"role": "user", "content": user_text})
-    with st.chat_message("user"):
-        st.write(user_text)
-    reply = get_reply(user_text, lang)
-    st.session_state.messages.append({"role": "assistant", "content": reply})
-    with st.chat_message("assistant"):
-        render_message(reply)
-        audio = speak_clear(reply)
-        if audio:
-            st.audio(audio, format="audio/mp3", autoplay=True)
+        tts = g
