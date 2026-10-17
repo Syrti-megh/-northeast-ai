@@ -11,17 +11,52 @@ LANGUAGES = {
     "Hindi": "Namaste", "English": "Hello", "Nagamese": "Hello", "Nepali": "Namaste"
 }
 
-# === ADDED: All Language Hard Fallback ===
-HARD_FALLBACK = {
-    "vir": "Khawvel chu a axis-ah a vir a, ni khat chhungin vawi khat. Gravity avangin.",
-    "khawvel": "Khawvel chu ni system-a planet a ni a, a axis-ah a vir a.",
-    "gravity": "Gravity chu thil hipna chakna a ni a, Newton ten an zir a.",
-    "arsi": "Arsi chu vana gas leh meisa lian tak a ni a, nuclear fusion avangin a eng a.",
-    "thla": "Thla chu kan khawvel satellite a ni a, ni eng reflect avangin a eng a.",
-    "black hole": "Black hole chu gravity chak tak a ni a, light pawh a chhuak thei lo.",
-    "ni": "Ni chu solar system laipui arsi lian tak a ni a, hydrogen fusion avangin a eng a.",
-    "pani": "Pani chu H2O a ni a, hydrogen leh oxygen atanga siam a ni a.",
-    "light": "Light chu energy a ni a, second khat chhungin 3 lakh km a kal a."
+# === FIXED: All 10 Language ka alag fallback ===
+FALLBACK_ALL = {
+    "Garo": {
+        "gravity": "Gravity mingsa bostu-ko rikna shakti ong·a. Prithivi-ni bostu-ko rikna.",
+        "prithivi": "Prithivi a·axis-o dongtokenga, ge·sa sani gisik ra·enggipa. Gravity-ni gita.",
+        "porgido": "Prithivi a·axis-o dongtokenga, ge·sa sani gisik ra·enggipa.",
+        "salrang": "Salrang gas aro wal·a gital dingtang ong·a, nuclear fusion-ni a·sel jekchaka.",
+        "jawal": "Jawal Prithivi-ni satellite ong·a, sal-ni jekgipa-ko reflect ka·a.",
+        "black hole": "Black hole gravity gita ong·a, jekgipa wa·al chakatna man·ja.",
+        "vir": "Prithivi a·axis-o dongtokenga."
+    },
+    "Mizo": {
+        "vir": "Khawvel chu a axis-ah a vir a, ni khat chhungin vawi khat. Gravity avangin.",
+        "khawvel": "Khawvel chu ni system-a planet a ni a, a axis-ah a vir a.",
+        "gravity": "Gravity chu thil hipna chakna a ni a, Newton ten an zir a.",
+        "arsi": "Arsi chu vana gas leh meisa lian tak a ni a, nuclear fusion avangin a eng a.",
+        "thla": "Thla chu kan khawvel satellite a ni a, ni eng reflect avangin a eng a.",
+        "black hole": "Black hole chu gravity chak tak a ni a, light pawh a chhuak thei lo."
+    },
+    "Khasi": {
+        "pyrthei": "Ka pyrthei ka iaid shaphang la ka axis, shisien ha ka sngi. Na ka gravity.",
+        "gravity": "Ka gravity ka dei ka bor ba ring jingiasyllok. Ka pyrthei ka ring.",
+        "khlor": "U khlor u dei u gas ba heh ha bneng, u shat da ka fusion.",
+        "bnai": "U bnai u dei u satellite jong ka pyrthei, u pynphriang ia ka jingshai sngi.",
+        "black hole": "U black hole u dei ka gravity kaba khraw, wat ka jingshai ruh kam lait."
+    },
+    "Kokborok": {
+        "ha": "Ha a axis-o wngwi tonggo, salnisa kaisa tongwi. Gravity ni bagwi.",
+        "gravity": "Gravity bono nokhorokno buthuknani bisingo, ha-o buthukgo.",
+        "atal": "Atal gas aro hor gwnang tonggo, fusion bai kwrwi tonggo.",
+        "tal": "Tal bono ha-ni satellite, salni hor reflect khwlai tonggo.",
+        "black hole": "Black hole gravity gwnang tonggo, hor belai katjago."
+    },
+    "English": {
+        "earth": "Earth rotates on its axis once in 24 hours due to gravity.",
+        "gravity": "Gravity is the force that pulls objects towards Earth. Newton discovered it.",
+        "star": "A star is a giant ball of gas shining due to nuclear fusion.",
+        "moon": "Moon is Earth's satellite, it reflects sunlight.",
+        "black hole": "A black hole is extreme gravity where even light cannot escape."
+    },
+    "Hindi": {
+        "prithvi": "Prithvi apni dhuri par 24 ghante me ek baar ghoomti hai, gravity ke karan.",
+        "gravity": "Gravity wo shakti hai jo cheezo ko Prithvi ki taraf kheenchti hai.",
+        "tara": "Tara gas ka bada gola hai jo nuclear fusion se chamakta hai.",
+        "chand": "Chand Prithvi ka satellite hai, suraj ki roshni reflect karta hai."
+    }
 }
 
 if "messages" not in st.session_state:
@@ -44,10 +79,8 @@ def get_api_key():
     except: key = os.getenv("GROQ_API_KEY", "")
     return str(key).strip().replace('"','').replace("'","").replace(" ","").replace("\n","")
 
-# FIXED: Ab "Ka hrethiam lo" kabhi nahi dega
 def remove_loop_and_fix(text):
-    if not text or len(text.strip()) < 5:
-        return ""
+    if not text or len(text.strip()) < 5: return ""
     parts = [p.strip() for p in text.split('.') if p.strip()]
     seen=set(); out=[]
     for p in parts:
@@ -65,47 +98,63 @@ def get_reply(text, language):
     if not api_key.startswith("gsk_"): return "API Key Error! Secrets check karo."
     try:
         client=Groq(api_key=api_key)
-        system_prompt=f"""You are Northeast AI by Samewan, SCIENTIFIC TEACHER.
-Answer ONLY in {language} language, ROMAN letters.
-RULES: 1) 2-3 short scientific sentences. 2) No spiritual. 3) NEVER say Ka hrethiam lo. Always answer scientifically.
-If user asks Khawvel engtin nge a vir -> Khawvel chu a axis ah a vir a, ni khat chhungin vawi khat. Gravity avangin.
-If Arsi -> Arsi chu vana gas leh meisa lian tak a ni a, nuclear fusion avangin a eng a.
-Current language: {language}. Answer in {language}."""
+        
+        # LANGUAGE WISE PROMPT - Yahi main fix hai
+        if language == "Garo":
+            sys_prompt = "You are Garo science teacher. Answer ONLY in Garo Roman. Example: Gravity maiko? -> Gravity mingsa bostu-ko rikna shakti ong·a. Never use Mizo words like Khawvel."
+        elif language == "Khasi":
+            sys_prompt = "You are Khasi science teacher. Answer ONLY in Khasi Roman. Example: Gravity kadei? -> Ka gravity ka dei ka bor ba ring. Never use Mizo."
+        elif language == "Mizo":
+            sys_prompt = "You are Mizo science teacher. Answer ONLY in Mizo Roman. Example: Gravity eng nge? -> Gravity chu thil hipna chakna a ni a."
+        else:
+            sys_prompt = f"You are {language} science teacher. Answer ONLY in {language}. 2-3 short sentences. Scientific only."
 
-        history=[{"role": "system", "content": system_prompt}]
+        history=[{"role": "system", "content": sys_prompt}]
         for m in st.session_state.messages[-3:]:
             history.append({"role": m["role"], "content": m["content"]})
         history.append({"role": "user", "content": text})
 
-        # === FIXED + ADDED: 3 Model try ===
         for model_name in ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "llama-3.3-70b-versatile"]:
             try:
-                comp=client.chat.completions.create(
-                    messages=history, model=model_name, 
-                    max_tokens=500, temperature=0.75, top_p=0.9
-                )
+                comp=client.chat.completions.create(messages=history, model=model_name, max_tokens=500, temperature=0.75, top_p=0.9)
                 content=comp.choices[0].message.content.strip()
                 if content and len(content) > 15:
+                    # CROSS-LANGUAGE BUG FIX - Tere screenshot wala bug
+                    if language == "Garo" and "Khawvel chu" in content:
+                        continue
+                    if language == "Khasi" and "Khawvel chu" in content:
+                        continue
                     cleaned=remove_loop_and_fix(content)
                     if len(cleaned) > 15:
                         return cleaned
             except: continue
 
-        # === ADDED: Hard fallback agar sab fail ho jaye ===
+        # Hard fallback - language wise
         low = text.lower()
-        for k,v in HARD_FALLBACK.items():
+        # 1. Selected language me dhoondo
+        if language in FALLBACK_ALL:
+            for k,v in FALLBACK_ALL[language].items():
+                if k in low:
+                    return v
+        # 2. English me dhoondo
+        for k,v in FALLBACK_ALL["English"].items():
             if k in low:
                 return v
-        # Last option - kabhi khali nahi jayega
-        return "He thil chu science thil pawimawh tak a ni a, natural process avangin a awm a, research in a zir chiang a."
+
+        defaults = {
+            "Garo": "Ia bostu science-ni bidingo ong·a, natural process-ni a·sel.",
+            "Mizo": "He thil chu science thil pawimawh tak a ni a, natural process avangin a awm a.",
+            "Khasi": "Kane ka dei ka jingthaw science kaba donkam, na ka jingleh nature.",
+            "English": "This is a scientific phenomenon due to natural processes and gravity."
+        }
+        return defaults.get(language, defaults["English"])
 
     except Exception as e:
-        # Error pe bhi fallback dega
-        low = text.lower()
-        for k,v in HARD_FALLBACK.items():
-            if k in low:
-                return v
-        return "Khawvel chu a axis-ah a vir a, ni khat chhungin vawi khat. Gravity avangin."
+        low=text.lower()
+        if language in FALLBACK_ALL:
+            for k,v in FALLBACK_ALL[language].items():
+                if k in low: return v
+        return FALLBACK_ALL.get(language, FALLBACK_ALL["English"]).get("gravity", "Gravity is attraction force.")
 
 def transcribe_voice(audio_file):
     try:
